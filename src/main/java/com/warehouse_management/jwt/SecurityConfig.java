@@ -46,7 +46,8 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/auth/login",
                                 "/api/auth/signup",
-                                "/api/auth/forgotPassword"
+                                "/api/auth/forgotPassword",
+                                "/api/auth/create/super/admin"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

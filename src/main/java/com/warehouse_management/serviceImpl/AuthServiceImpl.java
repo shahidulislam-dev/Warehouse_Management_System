@@ -87,24 +87,35 @@ public class AuthServiceImpl implements AuthService {
                 HttpStatus.BAD_REQUEST);
     }
 
+    // AuthServiceImpl.java - More efficient approach
     @Override
     public ResponseEntity<List<UserWrapper>> getAllUser() {
         try {
-            if(jwtFilter.isAdmin()){
-                return new ResponseEntity<>(userRepository.getAllUser(),HttpStatus.OK);
-            }else {
-                return new ResponseEntity<>(new ArrayList<>(),HttpStatus.UNAUTHORIZED);
+            if(jwtFilter.isAdmin() || jwtFilter.isSuperAdmin()){
+                List<UserWrapper> users;
+
+                if (jwtFilter.isSuperAdmin()) {
+                    // Super Admin: get all users (admins and staff)
+                    users = userRepository.getAllUsersForSuperAdmin();
+                } else {
+                    // Admin: get only staff users
+                    users = userRepository.getStaffUsers();
+                }
+
+                return new ResponseEntity<>(users, HttpStatus.OK);
+            } else {
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
             }
-        }catch (Exception ex){
+        } catch (Exception ex) {
             ex.printStackTrace();
         }
-        return new ResponseEntity<>(new ArrayList<>(),HttpStatus.INTERNAL_SERVER_ERROR);
+        return new ResponseEntity<>(new ArrayList<>(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @Override
     public ResponseEntity<String> update(Map<String, String> requestMap) {
         try {
-            if(jwtFilter.isAdmin()){
+            if(jwtFilter.isAdmin() || jwtFilter.isSuperAdmin()){
                 Optional<User> optional = userRepository.findById(Long.parseLong(requestMap.get("id")));
                 if(optional.isPresent()){
                     userRepository.updateStatus(requestMap.get("status"), Integer.parseInt(requestMap.get("id")));
@@ -189,6 +200,41 @@ public class AuthServiceImpl implements AuthService {
         return user;
     }
 
+
+
+    //Create a super admin
+    @Override
+    public ResponseEntity<String> createSuperAdmin(Map<String, String> requestMap) {
+        try {
+            long superAdminCount = userRepository.countByRole("super-admin");
+            if (superAdminCount > 0) {
+                return WarehouseUtils.getResponseEntity("Super-admin already exists. Use admin panel to create new ones.", HttpStatus.BAD_REQUEST);
+            }
+
+            if (validateSignupMap(requestMap)){
+                User user = userRepository.findByEmailId(requestMap.get("email"));
+                if(Objects.isNull(user)){
+                    User superAdmin = new User();
+                    superAdmin.setFullName(requestMap.get("fullName"));
+                    superAdmin.setContactNUmber(requestMap.get("contactNumber"));
+                    superAdmin.setEmail(requestMap.get("email"));
+                    superAdmin.setPassword(passwordEncoder.encode(requestMap.get("password")));
+                    superAdmin.setStatus("true");
+                    superAdmin.setRole("super-admin");
+
+                    userRepository.save(superAdmin);
+                    return WarehouseUtils.getResponseEntity("Super-admin created successfully!", HttpStatus.OK);
+                }else {
+                    return WarehouseUtils.getResponseEntity("Email already exists", HttpStatus.BAD_REQUEST);
+                }
+            }else {
+                return WarehouseUtils.getResponseEntity("Invalid Data", HttpStatus.BAD_REQUEST);
+            }
+        }catch (Exception ex){
+            ex.printStackTrace();
+        }
+        return WarehouseUtils.getResponseEntity("Something went wrong", HttpStatus.INTERNAL_SERVER_ERROR);
+    }
 }
 
 

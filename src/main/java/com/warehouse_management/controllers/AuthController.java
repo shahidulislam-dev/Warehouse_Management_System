@@ -28,4 +28,8 @@ public interface AuthController {
 
     @PostMapping(path = "/forgotPassword")
     ResponseEntity<String> forgotPassword(@RequestBody Map<String, String> requestMap);
+
+    //Create a supper admin
+    @PostMapping(path = "/create/super/admin")
+    ResponseEntity<String> createSuperAdmin(@RequestBody Map<String, String> requestMap);
 }
