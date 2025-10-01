@@ -35,6 +35,9 @@ public class RoomsServiceImpl implements RoomsService {
     @Override
     public ResponseEntity<String> createFloor(RoomRequest request) {
         try {
+            if (!jwtFilter.isAdmin() && !jwtFilter.isSuperAdmin()) {
+                return WarehouseUtils.getResponseEntity(WarehouseConstant.UNAUTHORIZED_ACCESS, HttpStatus.UNAUTHORIZED);
+            }
             Optional<Floors> floor = floorRepository.findById(request.getFloorId());
             if (floor.isEmpty()) {
                 return WarehouseUtils.getResponseEntity("Floor does not exist", HttpStatus.OK);
@@ -105,7 +108,7 @@ public class RoomsServiceImpl implements RoomsService {
     @Override
     public ResponseEntity<String> updateFloor(Long id, RoomRequest request) {
         try {
-            if (!jwtFilter.isAdmin()) {
+            if (!jwtFilter.isAdmin() && !jwtFilter.isSuperAdmin()) {
                 return WarehouseUtils.getResponseEntity(WarehouseConstant.UNAUTHORIZED_ACCESS, HttpStatus.UNAUTHORIZED);
             }
             Optional<Rooms> optionalRoom = roomsRepository.findById(id);
@@ -126,7 +129,7 @@ public class RoomsServiceImpl implements RoomsService {
     @Override
     public ResponseEntity<String> deleteFloor(Long id) {
         try {
-            if (!jwtFilter.isAdmin()) {
+            if (!jwtFilter.isAdmin() && !jwtFilter.isSuperAdmin()) {
                 return WarehouseUtils.getResponseEntity(WarehouseConstant.UNAUTHORIZED_ACCESS, HttpStatus.UNAUTHORIZED);
             }
             if (roomsRepository.existsById(id)) {

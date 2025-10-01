@@ -7,9 +7,6 @@ import lombok.NoArgsConstructor;
 import java.util.List;
 
 @Entity
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
 public class GoodsCategory {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -19,5 +16,38 @@ public class GoodsCategory {
 
     @OneToMany(mappedBy = "category")
     private List<Goods> goodsList;
+
+    public GoodsCategory() {
+    }
+
+    public GoodsCategory(Long id, String name, List<Goods> goodsList) {
+        this.id = id;
+        this.name = name;
+        this.goodsList = goodsList;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public List<Goods> getGoodsList() {
+        return goodsList;
+    }
+
+    public void setGoodsList(List<Goods> goodsList) {
+        this.goodsList = goodsList;
+    }
 }
 

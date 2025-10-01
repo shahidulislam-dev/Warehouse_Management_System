@@ -1,7 +1,6 @@
 package com.warehouse_management.repositories;
 
 import com.warehouse_management.entity.Rooms;
-import com.warehouse_management.wrapper.FloorWrapper;
 import com.warehouse_management.wrapper.RoomsWrapper;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
