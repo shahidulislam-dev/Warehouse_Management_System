@@ -3,12 +3,13 @@ package com.warehouse_management.wrapper;
 public class GoodsCategoryWrapper {
     private Long id;
     private String name;
-
+    private String unit;
     public GoodsCategoryWrapper() {}
 
-    public GoodsCategoryWrapper(Long id, String name) {
+    public GoodsCategoryWrapper(Long id, String name, String unit) {
         this.id = id;
         this.name = name;
+        this.unit = unit;
     }
 
     public Long getId() { return id; }
@@ -16,5 +17,13 @@ public class GoodsCategoryWrapper {
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
+
+    public String getUnit() {
+        return unit;
+    }
+
+    public void setUnit(String unit) {
+        this.unit = unit;
+    }
 }
 

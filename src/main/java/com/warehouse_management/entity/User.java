@@ -12,6 +12,7 @@ import java.io.Serializable;
 @NamedQuery(name = "User.getStaffUsers", query = "select new com.warehouse_management.wrapper.UserWrapper(u.id, u.fullName, u.email, u.contactNumber, u.status, u.role) from User u where u.role = 'staff'")
 @NamedQuery(name = "User.getAllAdmin", query = "select u.email from User u where u.role = 'admin'")
 @NamedQuery(name = "User.updateStatus", query = "update User u set u.status=:status where u.id=:id")
+@NamedQuery(name = "User.updateStatusAndRole", query = "update User u set u.status=:status, u.role=:role where u.id=:id")
 
 @Entity
 @DynamicInsert

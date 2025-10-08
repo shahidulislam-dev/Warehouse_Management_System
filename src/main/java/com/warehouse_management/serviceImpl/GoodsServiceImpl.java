@@ -59,6 +59,8 @@ public class GoodsServiceImpl implements GoodsService {
                 return WarehouseUtils.getResponseEntity("Category not found", HttpStatus.NOT_FOUND);
             }
 
+            GoodsCategory category = categoryOpt.get();
+
             // Fetch room
             Optional<Rooms> roomOpt = roomRepository.findById(request.getRoomId());
             if (roomOpt.isEmpty()) {
@@ -80,10 +82,10 @@ public class GoodsServiceImpl implements GoodsService {
             Goods goods = new Goods();
             goods.setName(request.getName());
             goods.setQuantity(request.getQuantity());
-            goods.setUnit(request.getUnit());
+            // NO UNIT SETTING - unit comes from category
             goods.setCreateDate(LocalDateTime.now());
             goods.setUpdateDate(null);
-            goods.setCategory(categoryOpt.get());
+            goods.setCategory(category); // Unit is embedded in category
             goods.setRooms(roomOpt.get());
             goods.setFloors(floorOpt.get());
             goods.setWarehouses(warehouseOpt.get());
@@ -98,7 +100,6 @@ public class GoodsServiceImpl implements GoodsService {
                     HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-
 
     @Override
     public ResponseEntity<List<GoodsWrapper>> getAllGoods() {
@@ -117,8 +118,9 @@ public class GoodsServiceImpl implements GoodsService {
             if (optionalGoods.isPresent()) {
                 Goods g = optionalGoods.get();
                 GoodsResponse response = new GoodsResponse(
-                        g.getId(), g.getName(), g.getQuantity(), g.getUnit(),
+                        g.getId(), g.getName(), g.getQuantity(),
                         g.getCategory().getName(),
+                        g.getCategory().getUnit(), // Unit from category
                         g.getRooms().getName(),
                         g.getFloors().getName(),
                         g.getWarehouses().getName(),
@@ -157,7 +159,13 @@ public class GoodsServiceImpl implements GoodsService {
                 Goods goods = optionalGoods.get();
                 goods.setName(request.getName());
                 goods.setQuantity(request.getQuantity());
-                goods.setUnit(request.getUnit());
+
+                // Update category if changed - unit automatically comes from new category
+                if (request.getCategoryId() != null && !request.getCategoryId().equals(goods.getCategory().getId())) {
+                    Optional<GoodsCategory> newCategoryOpt = categoryRepository.findById(request.getCategoryId());
+                    newCategoryOpt.ifPresent(goods::setCategory);
+                }
+
                 goods.setUpdateDate(LocalDateTime.now());
                 goodsRepository.save(goods);
                 return WarehouseUtils.getResponseEntity("Goods updated successfully", HttpStatus.OK);

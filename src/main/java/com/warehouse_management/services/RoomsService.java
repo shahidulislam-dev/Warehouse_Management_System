@@ -9,12 +9,12 @@ import org.springframework.http.ResponseEntity;
 import java.util.List;
 
 public interface RoomsService {
-    ResponseEntity<String> createFloor(RoomRequest request);
-    ResponseEntity<List<RoomsWrapper>> getAllFloors();
-    ResponseEntity<RoomResponse> getFloorById(Long id);
+    ResponseEntity<String> createRoom(RoomRequest request);
+    ResponseEntity<List<RoomsWrapper>> getAllRooms();
+    ResponseEntity<RoomResponse> getRoomById(Long id);
     ResponseEntity<List<RoomsWrapper>> getRoomsByFloorAndWarehouse(Long floorId, Long warehouseId);
     ResponseEntity<List<RoomsWrapper>> getRoomsByWarehouseId(Long warehouseId);
 
-    ResponseEntity<String> updateFloor(Long id, RoomRequest request);
-    ResponseEntity<String> deleteFloor(Long id);
+    ResponseEntity<String> updateRoom(Long id, RoomRequest request);
+    ResponseEntity<String> deleteRoom(Long id);
 }

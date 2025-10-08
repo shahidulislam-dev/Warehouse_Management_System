@@ -7,28 +7,32 @@ import java.time.LocalDateTime;
         @NamedQuery(
                 name = "Goods.getAllGoods",
                 query = "select new com.warehouse_management.wrapper.GoodsWrapper(" +
-                        "g.id, g.name, g.quantity, g.unit, g.category.name, " +
+                        "g.id, g.name, g.quantity, " +
+                        "g.category.name, g.category.unit, " +
                         "g.rooms.name, g.floors.name, g.warehouses.name, g.createdBy.fullName, g.createDate, g.updateDate) " +
                         "from Goods g"
         ),
         @NamedQuery(
                 name = "Goods.getGoodsByWarehouseId",
                 query = "select new com.warehouse_management.wrapper.GoodsWrapper(" +
-                        "g.id, g.name, g.quantity, g.unit, g.category.name, " +
+                        "g.id, g.name, g.quantity, " +
+                        "g.category.name, g.category.unit, " +
                         "g.rooms.name, g.floors.name, g.warehouses.name, g.createdBy.fullName, g.createDate, g.updateDate) " +
                         "from Goods g where g.warehouses.id = :warehouseId"
         ),
         @NamedQuery(
                 name = "Goods.getGoodsByFloorId",
                 query = "select new com.warehouse_management.wrapper.GoodsWrapper(" +
-                        "g.id, g.name, g.quantity, g.unit, g.category.name, " +
+                        "g.id, g.name, g.quantity, " +
+                        "g.category.name, g.category.unit, " +
                         "g.rooms.name, g.floors.name, g.warehouses.name, g.createdBy.fullName, g.createDate, g.updateDate) " +
                         "from Goods g where g.floors.id = :floorId"
         ),
         @NamedQuery(
                 name = "Goods.getGoodsByRoomId",
                 query = "select new com.warehouse_management.wrapper.GoodsWrapper(" +
-                        "g.id, g.name, g.quantity, g.unit, g.category.name, " +
+                        "g.id, g.name, g.quantity, " +
+                        "g.category.name, g.category.unit, " +
                         "g.rooms.name, g.floors.name, g.warehouses.name, g.createdBy.fullName, g.createDate, g.updateDate) " +
                         "from Goods g where g.rooms.id = :roomId"
         )
@@ -41,7 +45,6 @@ public class Goods {
 
     private String name;
     private int quantity;
-    private String unit;
     private LocalDateTime createDate;
     private LocalDateTime updateDate;
 
@@ -64,12 +67,10 @@ public class Goods {
 
     public Goods() {}
 
-    public Goods(Long id, String name, int quantity, String unit,
-                 LocalDateTime createDate, LocalDateTime updateDate) {
+    public Goods(Long id, String name, int quantity, LocalDateTime createDate, LocalDateTime updateDate) {
         this.id = id;
         this.name = name;
         this.quantity = quantity;
-        this.unit = unit;
         this.createDate = createDate;
         this.updateDate = updateDate;
     }
@@ -96,14 +97,6 @@ public class Goods {
 
     public void setQuantity(int quantity) {
         this.quantity = quantity;
-    }
-
-    public String getUnit() {
-        return unit;
-    }
-
-    public void setUnit(String unit) {
-        this.unit = unit;
     }
 
     public LocalDateTime getCreateDate() {

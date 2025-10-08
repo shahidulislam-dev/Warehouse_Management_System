@@ -24,17 +24,17 @@ public class RoomsControllerImpl implements RoomsController {
 
     @Override
     public ResponseEntity<String> create(RoomRequest request) {
-        return roomsService.createFloor(request);
+        return roomsService.createRoom(request);
     }
 
     @Override
     public ResponseEntity<List<RoomsWrapper>> getAll() {
-        return roomsService.getAllFloors();
+        return roomsService.getAllRooms();
     }
 
     @Override
     public ResponseEntity<RoomResponse> getById(Long id) {
-        return roomsService.getFloorById(id);
+        return roomsService.getRoomById(id);
     }
 
     @Override
@@ -47,12 +47,12 @@ public class RoomsControllerImpl implements RoomsController {
     }
     @Override
     public ResponseEntity<String> update(Long id, RoomRequest request) {
-        return roomsService.updateFloor(id, request);
+        return roomsService.updateRoom(id, request);
     }
 
     @Override
     public ResponseEntity<String> delete(Long id) {
-        ResponseEntity<String> response = roomsService.deleteFloor(id);
+        ResponseEntity<String> response = roomsService.deleteRoom(id);
         if (response.getStatusCode() == HttpStatus.OK) {
             return ResponseEntity.ok(response.getBody());
         } else {

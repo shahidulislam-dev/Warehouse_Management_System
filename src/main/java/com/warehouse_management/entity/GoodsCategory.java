@@ -1,9 +1,5 @@
 package com.warehouse_management.entity;
-
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import java.util.List;
 
 @Entity
@@ -13,6 +9,7 @@ public class GoodsCategory {
     private Long id;
 
     private String name;
+    private String unit;
 
     @OneToMany(mappedBy = "category")
     private List<Goods> goodsList;
@@ -20,9 +17,10 @@ public class GoodsCategory {
     public GoodsCategory() {
     }
 
-    public GoodsCategory(Long id, String name, List<Goods> goodsList) {
+    public GoodsCategory(Long id, String name, String unit, List<Goods> goodsList) {
         this.id = id;
         this.name = name;
+        this.unit = unit;
         this.goodsList = goodsList;
     }
 
@@ -48,6 +46,14 @@ public class GoodsCategory {
 
     public void setGoodsList(List<Goods> goodsList) {
         this.goodsList = goodsList;
+    }
+
+    public String getUnit() {
+        return unit;
+    }
+
+    public void setUnit(String unit) {
+        this.unit = unit;
     }
 }
 

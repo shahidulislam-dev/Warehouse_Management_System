@@ -79,4 +79,7 @@ public class JwtFilter extends OncePerRequestFilter {
     public String getCurrentUser(){
         return username;
     }
+    public String getCurrentUserRole() {
+        return claims != null ? (String) claims.get("role") : null;
+    }
 }

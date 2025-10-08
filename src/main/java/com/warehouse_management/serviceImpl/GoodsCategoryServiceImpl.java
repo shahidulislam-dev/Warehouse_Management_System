@@ -28,6 +28,7 @@ public class GoodsCategoryServiceImpl implements GoodsCategoryService {
         try {
             GoodsCategory category = new GoodsCategory();
             category.setName(request.getName());
+            category.setUnit(request.getUnit());
             goodsCategoryRepository.save(category);
             return ResponseEntity.ok("Goods category created successfully");
         } catch (Exception e) {
@@ -54,7 +55,7 @@ public class GoodsCategoryServiceImpl implements GoodsCategoryService {
             Optional<GoodsCategory> optionalCategory = goodsCategoryRepository.findById(id);
             if (optionalCategory.isPresent()) {
                 GoodsCategory c = optionalCategory.get();
-                GoodsCategoryResponse response = new GoodsCategoryResponse(c.getId(), c.getName());
+                GoodsCategoryResponse response = new GoodsCategoryResponse(c.getId(), c.getName(), c.getUnit());
                 return ResponseEntity.ok(response);
             } else {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
@@ -72,6 +73,7 @@ public class GoodsCategoryServiceImpl implements GoodsCategoryService {
             if (optionalCategory.isPresent()) {
                 GoodsCategory category = optionalCategory.get();
                 category.setName(request.getName());
+                category.setUnit(request.getUnit());
                 goodsCategoryRepository.save(category);
                 return ResponseEntity.ok("Goods category updated successfully");
             } else {

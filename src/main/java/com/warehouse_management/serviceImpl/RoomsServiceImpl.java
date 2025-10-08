@@ -33,7 +33,7 @@ public class RoomsServiceImpl implements RoomsService {
     }
 
     @Override
-    public ResponseEntity<String> createFloor(RoomRequest request) {
+    public ResponseEntity<String> createRoom(RoomRequest request) {
         try {
             if (!jwtFilter.isAdmin() && !jwtFilter.isSuperAdmin()) {
                 return WarehouseUtils.getResponseEntity(WarehouseConstant.UNAUTHORIZED_ACCESS, HttpStatus.UNAUTHORIZED);
@@ -56,7 +56,7 @@ public class RoomsServiceImpl implements RoomsService {
     }
 
     @Override
-    public ResponseEntity<List<RoomsWrapper>> getAllFloors() {
+    public ResponseEntity<List<RoomsWrapper>> getAllRooms() {
         try {
             return new ResponseEntity<>(roomsRepository.getAllRooms(), HttpStatus.OK);
         } catch (Exception e) {
@@ -66,7 +66,7 @@ public class RoomsServiceImpl implements RoomsService {
     }
 
     @Override
-    public ResponseEntity<RoomResponse> getFloorById(Long id) {
+    public ResponseEntity<RoomResponse> getRoomById(Long id) {
         try {
             Optional<Rooms> optionalRoom = roomsRepository.findById(id);
             if (optionalRoom.isPresent()) {
@@ -106,7 +106,7 @@ public class RoomsServiceImpl implements RoomsService {
     }
 
     @Override
-    public ResponseEntity<String> updateFloor(Long id, RoomRequest request) {
+    public ResponseEntity<String> updateRoom(Long id, RoomRequest request) {
         try {
             if (!jwtFilter.isAdmin() && !jwtFilter.isSuperAdmin()) {
                 return WarehouseUtils.getResponseEntity(WarehouseConstant.UNAUTHORIZED_ACCESS, HttpStatus.UNAUTHORIZED);
@@ -127,7 +127,7 @@ public class RoomsServiceImpl implements RoomsService {
     }
 
     @Override
-    public ResponseEntity<String> deleteFloor(Long id) {
+    public ResponseEntity<String> deleteRoom(Long id) {
         try {
             if (!jwtFilter.isAdmin() && !jwtFilter.isSuperAdmin()) {
                 return WarehouseUtils.getResponseEntity(WarehouseConstant.UNAUTHORIZED_ACCESS, HttpStatus.UNAUTHORIZED);

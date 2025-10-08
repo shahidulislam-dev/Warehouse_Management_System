@@ -32,7 +32,7 @@ public class SecurityConfig {
                 .cors(cors -> cors
                         .configurationSource(request -> {
                             CorsConfiguration config = new CorsConfiguration();
-                            config.setAllowedOrigins(List.of("http://localhost:4200", "http://localhost:3000","https://warehouse-management-system-fronten.vercel.app"));
+                            config.setAllowedOrigins(List.of("http://localhost:4200", "http://localhost:3000","https://warehouse-management-system-fronten-green.vercel.app"));
                             config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
                             config.setAllowedHeaders(List.of("*"));
                             config.setAllowCredentials(true);
