@@ -3,6 +3,7 @@ package com.warehouse_management.requests;
 public class GoodsRequest {
     private String name;
     private int quantity;
+    private Long size;
     private Long categoryId;
     private Long roomId;
     private Long floorId;
@@ -14,6 +15,14 @@ public class GoodsRequest {
 
     public int getQuantity() { return quantity; }
     public void setQuantity(int quantity) { this.quantity = quantity; }
+
+    public Long getSize() {
+        return size;
+    }
+
+    public void setSize(Long size) {
+        this.size = size;
+    }
 
     public Long getCategoryId() { return categoryId; }
     public void setCategoryId(Long categoryId) { this.categoryId = categoryId; }

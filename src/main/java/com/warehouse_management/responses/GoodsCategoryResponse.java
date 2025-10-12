@@ -5,12 +5,14 @@ public class GoodsCategoryResponse {
 
     private String name;
     private String unit;
+    private String sizeUnit;
     public GoodsCategoryResponse() {}
 
-    public GoodsCategoryResponse(Long id, String name, String unit) {
+    public GoodsCategoryResponse(Long id, String name, String unit, String sizeUnit) {
         this.id = id;
         this.name = name;
         this.unit = unit;
+        this.sizeUnit = sizeUnit;
     }
 
     public Long getId() {
@@ -35,5 +37,13 @@ public class GoodsCategoryResponse {
 
     public void setUnit(String unit) {
         this.unit = unit;
+    }
+
+    public String getSizeUnit() {
+        return sizeUnit;
+    }
+
+    public void setSizeUnit(String sizeUnit) {
+        this.sizeUnit = sizeUnit;
     }
 }

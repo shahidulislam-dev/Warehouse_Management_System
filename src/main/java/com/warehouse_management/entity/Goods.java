@@ -7,32 +7,32 @@ import java.time.LocalDateTime;
         @NamedQuery(
                 name = "Goods.getAllGoods",
                 query = "select new com.warehouse_management.wrapper.GoodsWrapper(" +
-                        "g.id, g.name, g.quantity, " +
-                        "g.category.name, g.category.unit, " +
+                        "g.id, g.name, g.quantity, g.size," +
+                        "g.category.name, g.category.unit, g.category.sizeUnit, " +
                         "g.rooms.name, g.floors.name, g.warehouses.name, g.createdBy.fullName, g.createDate, g.updateDate) " +
                         "from Goods g"
         ),
         @NamedQuery(
                 name = "Goods.getGoodsByWarehouseId",
                 query = "select new com.warehouse_management.wrapper.GoodsWrapper(" +
-                        "g.id, g.name, g.quantity, " +
-                        "g.category.name, g.category.unit, " +
+                        "g.id, g.name, g.quantity, g.size, " +
+                        "g.category.name, g.category.unit, g.category.sizeUnit, " +
                         "g.rooms.name, g.floors.name, g.warehouses.name, g.createdBy.fullName, g.createDate, g.updateDate) " +
                         "from Goods g where g.warehouses.id = :warehouseId"
         ),
         @NamedQuery(
                 name = "Goods.getGoodsByFloorId",
                 query = "select new com.warehouse_management.wrapper.GoodsWrapper(" +
-                        "g.id, g.name, g.quantity, " +
-                        "g.category.name, g.category.unit, " +
+                        "g.id, g.name, g.quantity, g.size, " +
+                        "g.category.name, g.category.unit, g.category.sizeUnit, " +
                         "g.rooms.name, g.floors.name, g.warehouses.name, g.createdBy.fullName, g.createDate, g.updateDate) " +
                         "from Goods g where g.floors.id = :floorId"
         ),
         @NamedQuery(
                 name = "Goods.getGoodsByRoomId",
                 query = "select new com.warehouse_management.wrapper.GoodsWrapper(" +
-                        "g.id, g.name, g.quantity, " +
-                        "g.category.name, g.category.unit, " +
+                        "g.id, g.name, g.quantity, g.size, " +
+                        "g.category.name, g.category.unit, g.category.sizeUnit, " +
                         "g.rooms.name, g.floors.name, g.warehouses.name, g.createdBy.fullName, g.createDate, g.updateDate) " +
                         "from Goods g where g.rooms.id = :roomId"
         )
@@ -45,6 +45,7 @@ public class Goods {
 
     private String name;
     private int quantity;
+    private Long size;
     private LocalDateTime createDate;
     private LocalDateTime updateDate;
 
@@ -67,10 +68,11 @@ public class Goods {
 
     public Goods() {}
 
-    public Goods(Long id, String name, int quantity, LocalDateTime createDate, LocalDateTime updateDate) {
+    public Goods(Long id, String name, int quantity,Long size, LocalDateTime createDate, LocalDateTime updateDate) {
         this.id = id;
         this.name = name;
         this.quantity = quantity;
+        this.size = size;
         this.createDate = createDate;
         this.updateDate = updateDate;
     }
@@ -97,6 +99,14 @@ public class Goods {
 
     public void setQuantity(int quantity) {
         this.quantity = quantity;
+    }
+
+    public Long getSize() {
+        return size;
+    }
+
+    public void setSize(Long size) {
+        this.size = size;
     }
 
     public LocalDateTime getCreateDate() {
@@ -154,4 +164,5 @@ public class Goods {
     public void setWarehouses(Warehouses warehouses) {
         this.warehouses = warehouses;
     }
+
 }

@@ -82,10 +82,10 @@ public class GoodsServiceImpl implements GoodsService {
             Goods goods = new Goods();
             goods.setName(request.getName());
             goods.setQuantity(request.getQuantity());
-            // NO UNIT SETTING - unit comes from category
+            goods.setSize(request.getSize());
             goods.setCreateDate(LocalDateTime.now());
             goods.setUpdateDate(null);
-            goods.setCategory(category); // Unit is embedded in category
+            goods.setCategory(category); // Unit and size unit is embedded in category
             goods.setRooms(roomOpt.get());
             goods.setFloors(floorOpt.get());
             goods.setWarehouses(warehouseOpt.get());
@@ -118,9 +118,10 @@ public class GoodsServiceImpl implements GoodsService {
             if (optionalGoods.isPresent()) {
                 Goods g = optionalGoods.get();
                 GoodsResponse response = new GoodsResponse(
-                        g.getId(), g.getName(), g.getQuantity(),
+                        g.getId(), g.getName(), g.getQuantity(), g.getSize(),
                         g.getCategory().getName(),
-                        g.getCategory().getUnit(), // Unit from category
+                        g.getCategory().getUnit(),
+                        g.getCategory().getSizeUnit(),
                         g.getRooms().getName(),
                         g.getFloors().getName(),
                         g.getWarehouses().getName(),
@@ -159,6 +160,7 @@ public class GoodsServiceImpl implements GoodsService {
                 Goods goods = optionalGoods.get();
                 goods.setName(request.getName());
                 goods.setQuantity(request.getQuantity());
+                goods.setSize(request.getSize());
 
                 // Update category if changed - unit automatically comes from new category
                 if (request.getCategoryId() != null && !request.getCategoryId().equals(goods.getCategory().getId())) {

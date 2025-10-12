@@ -10,6 +10,7 @@ public class GoodsCategory {
 
     private String name;
     private String unit;
+    private String sizeUnit;
 
     @OneToMany(mappedBy = "category")
     private List<Goods> goodsList;
@@ -17,10 +18,11 @@ public class GoodsCategory {
     public GoodsCategory() {
     }
 
-    public GoodsCategory(Long id, String name, String unit, List<Goods> goodsList) {
+    public GoodsCategory(Long id, String name, String unit, String sizeUnit, List<Goods> goodsList) {
         this.id = id;
         this.name = name;
         this.unit = unit;
+        this.sizeUnit = sizeUnit;
         this.goodsList = goodsList;
     }
 
@@ -40,20 +42,28 @@ public class GoodsCategory {
         this.name = name;
     }
 
-    public List<Goods> getGoodsList() {
-        return goodsList;
-    }
-
-    public void setGoodsList(List<Goods> goodsList) {
-        this.goodsList = goodsList;
-    }
-
     public String getUnit() {
         return unit;
     }
 
     public void setUnit(String unit) {
         this.unit = unit;
+    }
+
+    public String getSizeUnit() {
+        return sizeUnit;
+    }
+
+    public void setSizeUnit(String sizeUnit) {
+        this.sizeUnit = sizeUnit;
+    }
+
+    public List<Goods> getGoodsList() {
+        return goodsList;
+    }
+
+    public void setGoodsList(List<Goods> goodsList) {
+        this.goodsList = goodsList;
     }
 }
 
