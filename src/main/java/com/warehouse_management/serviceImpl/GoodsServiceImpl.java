@@ -184,7 +184,7 @@ public class GoodsServiceImpl implements GoodsService {
     @Override
     public ResponseEntity<String> deleteGoods(Long id) {
         try {
-            if (!jwtFilter.isAdmin() && !jwtFilter.isSuperAdmin()) {
+            if (!jwtFilter.isSuperAdmin() && !jwtFilter.isAdmin()) {
                 return WarehouseUtils.getResponseEntity(WarehouseConstant.UNAUTHORIZED_ACCESS,
                         HttpStatus.UNAUTHORIZED);
             }

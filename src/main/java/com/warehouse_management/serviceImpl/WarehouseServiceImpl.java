@@ -32,7 +32,7 @@ public class WarehouseServiceImpl implements WarehouseService {
     @Override
     public ResponseEntity<String> createWarehouse(WarehouseRequest request) {
         try {
-            if (!jwtFilter.isAdmin() && !jwtFilter.isSuperAdmin()) {
+            if (!jwtFilter.isSuperAdmin() && !jwtFilter.isAdmin()) {
                 return WarehouseUtils.getResponseEntity(WarehouseConstant.UNAUTHORIZED_ACCESS, HttpStatus.UNAUTHORIZED);
             }
             Warehouses warehouse = new Warehouses();
@@ -76,7 +76,7 @@ public class WarehouseServiceImpl implements WarehouseService {
     @Override
     public ResponseEntity<String> updateWarehouse(Long id, WarehouseRequest request) {
         try {
-            if (!jwtFilter.isAdmin() && !jwtFilter.isSuperAdmin()) {
+            if (!jwtFilter.isSuperAdmin() && !jwtFilter.isAdmin()) {
                 return WarehouseUtils.getResponseEntity(WarehouseConstant.UNAUTHORIZED_ACCESS, HttpStatus.UNAUTHORIZED);
             }
             Optional<Warehouses> optionalWarehouse = warehousesRepository.findById(id);
@@ -97,7 +97,7 @@ public class WarehouseServiceImpl implements WarehouseService {
     @Override
     public ResponseEntity<String> deleteWarehouse(Long id) {
         try {
-            if (!jwtFilter.isAdmin() && !jwtFilter.isSuperAdmin()) {
+            if (!jwtFilter.isSuperAdmin() && !jwtFilter.isAdmin()) {
                 return WarehouseUtils.getResponseEntity(WarehouseConstant.UNAUTHORIZED_ACCESS, HttpStatus.UNAUTHORIZED);
             }
             if (warehousesRepository.existsById(id)) {

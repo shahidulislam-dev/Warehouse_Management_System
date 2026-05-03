@@ -34,7 +34,7 @@ public class FloorServiceImpl implements FloorService {
     @Override
     public ResponseEntity<String> createFloor(FloorRequest request) {
         try {
-            if (!jwtFilter.isAdmin() && !jwtFilter.isSuperAdmin()) {
+            if (!jwtFilter.isSuperAdmin() && !jwtFilter.isAdmin()) {
                 return WarehouseUtils.getResponseEntity(WarehouseConstant.UNAUTHORIZED_ACCESS, HttpStatus.UNAUTHORIZED);
             }
             Optional<Warehouses> warehouse = warehouseRepository.findById(request.getWarehouseId());
@@ -105,7 +105,7 @@ public class FloorServiceImpl implements FloorService {
     @Override
     public ResponseEntity<String> updateFloor(Long id, FloorRequest request) {
         try {
-            if (!jwtFilter.isAdmin() && !jwtFilter.isSuperAdmin()) {
+            if (!jwtFilter.isSuperAdmin() && !jwtFilter.isAdmin()) {
                 return WarehouseUtils.getResponseEntity(WarehouseConstant.UNAUTHORIZED_ACCESS, HttpStatus.UNAUTHORIZED);
             }
             Optional<Floors> optionalFloors = floorRepository.findById(id);
@@ -126,7 +126,7 @@ public class FloorServiceImpl implements FloorService {
     @Override
     public ResponseEntity<String> deleteFloor(Long id) {
         try {
-            if (!jwtFilter.isAdmin() && !jwtFilter.isSuperAdmin()) {
+            if (!jwtFilter.isSuperAdmin() && !jwtFilter.isAdmin()) {
                 return WarehouseUtils.getResponseEntity(WarehouseConstant.UNAUTHORIZED_ACCESS, HttpStatus.UNAUTHORIZED);
             }
             if (floorRepository.existsById(id)) {

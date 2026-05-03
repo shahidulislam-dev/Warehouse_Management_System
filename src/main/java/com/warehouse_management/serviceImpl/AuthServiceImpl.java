@@ -99,7 +99,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public ResponseEntity<List<UserWrapper>> getAllUser() {
         try {
-            if (jwtFilter.isAdmin() || jwtFilter.isSuperAdmin()) {
+            if (jwtFilter.isSuperAdmin() || jwtFilter.isAdmin()) {
                 List<UserWrapper> users;
                 if (jwtFilter.isSuperAdmin()) {
                     users = userRepository.getAllUsersForSuperAdmin();
@@ -119,7 +119,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public ResponseEntity<String> update(Map<String, String> requestMap) {
         try {
-            if (jwtFilter.isAdmin() || jwtFilter.isSuperAdmin()) {
+            if (jwtFilter.isSuperAdmin() || jwtFilter.isAdmin()) {
                 Optional<User> optional = userRepository.findById(Long.parseLong(requestMap.get("id")));
                 if (optional.isPresent()) {
                     User targetUser = optional.get();

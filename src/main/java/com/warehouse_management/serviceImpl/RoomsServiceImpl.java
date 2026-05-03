@@ -35,7 +35,7 @@ public class RoomsServiceImpl implements RoomsService {
     @Override
     public ResponseEntity<String> createRoom(RoomRequest request) {
         try {
-            if (!jwtFilter.isAdmin() && !jwtFilter.isSuperAdmin()) {
+            if (!jwtFilter.isSuperAdmin() && !jwtFilter.isAdmin()) {
                 return WarehouseUtils.getResponseEntity(WarehouseConstant.UNAUTHORIZED_ACCESS, HttpStatus.UNAUTHORIZED);
             }
             Optional<Floors> floor = floorRepository.findById(request.getFloorId());
@@ -108,7 +108,7 @@ public class RoomsServiceImpl implements RoomsService {
     @Override
     public ResponseEntity<String> updateRoom(Long id, RoomRequest request) {
         try {
-            if (!jwtFilter.isAdmin() && !jwtFilter.isSuperAdmin()) {
+            if (!jwtFilter.isSuperAdmin() && !jwtFilter.isAdmin()) {
                 return WarehouseUtils.getResponseEntity(WarehouseConstant.UNAUTHORIZED_ACCESS, HttpStatus.UNAUTHORIZED);
             }
             Optional<Rooms> optionalRoom = roomsRepository.findById(id);
@@ -129,7 +129,7 @@ public class RoomsServiceImpl implements RoomsService {
     @Override
     public ResponseEntity<String> deleteRoom(Long id) {
         try {
-            if (!jwtFilter.isAdmin() && !jwtFilter.isSuperAdmin()) {
+            if (!jwtFilter.isSuperAdmin() && !jwtFilter.isAdmin()) {
                 return WarehouseUtils.getResponseEntity(WarehouseConstant.UNAUTHORIZED_ACCESS, HttpStatus.UNAUTHORIZED);
             }
             if (roomsRepository.existsById(id)) {
