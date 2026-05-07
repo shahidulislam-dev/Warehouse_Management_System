@@ -21,6 +21,7 @@ import java.util.List;
 public class TransactionServiceImpl implements TransactionService {
 
     private final TransactionRepository transactionRepository;
+    private final TransactionItemRepository transactionItemRepository;
     private final GoodsRepository goodsRepository;
     private final EventRepository eventRepository;
     private final DepartmentRepository departmentRepository;
@@ -28,12 +29,14 @@ public class TransactionServiceImpl implements TransactionService {
     private final JwtFilter jwtFilter;
 
     public TransactionServiceImpl(TransactionRepository transactionRepository,
+                                  TransactionItemRepository transactionItemRepository,
                                   GoodsRepository goodsRepository,
                                   EventRepository eventRepository,
                                   DepartmentRepository departmentRepository,
                                   UserRepository userRepository,
                                   JwtFilter jwtFilter) {
         this.transactionRepository = transactionRepository;
+        this.transactionItemRepository = transactionItemRepository;
         this.goodsRepository = goodsRepository;
         this.eventRepository = eventRepository;
         this.departmentRepository = departmentRepository;
@@ -41,6 +44,7 @@ public class TransactionServiceImpl implements TransactionService {
         this.jwtFilter = jwtFilter;
     }
 
+    // ==================== CREATE ====================
     @Override
     public ResponseEntity<String> createTransaction(TransactionRequest request) {
         try {
@@ -50,17 +54,6 @@ public class TransactionServiceImpl implements TransactionService {
                 return ResponseEntity.badRequest().body("User not found");
             }
 
-            Goods goods = goodsRepository.findById(request.getGoodsId())
-                    .orElseThrow(() -> new RuntimeException("Goods not found"));
-
-            if (goods.getQuantity() < request.getQuantity()) {
-                return ResponseEntity.badRequest()
-                        .body("Insufficient quantity for: " + goods.getName());
-            }
-
-            goods.setQuantity(goods.getQuantity() - request.getQuantity());
-            goodsRepository.save(goods);
-
             Transactions transaction = new Transactions();
             transaction.setTransactionCategory(
                     Transactions.TransactionCategory.valueOf(request.getTransactionCategory().toUpperCase())
@@ -68,31 +61,34 @@ public class TransactionServiceImpl implements TransactionService {
             transaction.setIssuedBy(issuedBy);
             transaction.setIssueDate(LocalDateTime.now());
             transaction.setApprovedBy(request.getApprovedBy());
-            transaction.setGoods(goods);
-            transaction.setQuantityIssued(request.getQuantity());
-            transaction.setQuantityReturned(0);
             transaction.setStatus(Transactions.TransactionStatus.ISSUED);
 
-            if ("NORMAL".equalsIgnoreCase(request.getTransactionCategory())) {
-                transaction.setReceiverName(request.getReceiverName());
-                transaction.setReceiverContact(request.getReceiverContact());
-                transaction.setReceiverDutyPlace(request.getReceiverDutyPlace());
-            }
+            // Set category-specific details
+            setCategoryDetails(transaction, request);
 
-            if ("EVENT".equalsIgnoreCase(request.getTransactionCategory())) {
-                if (request.getEventId() != null) {
-                    Events event = eventRepository.findById(request.getEventId())
-                            .orElseThrow(() -> new RuntimeException("Event not found"));
-                    transaction.setEvent(event);
+            // Save multiple items
+            List<TransactionsItems> items = new ArrayList<>();
+            for (TransactionRequest.ItemRequest itemReq : request.getItems()) {
+                Goods goods = goodsRepository.findById(itemReq.getGoodsId())
+                        .orElseThrow(() -> new RuntimeException("Goods not found: " + itemReq.getGoodsId()));
+
+                if (goods.getQuantity() < itemReq.getQuantity()) {
+                    return ResponseEntity.badRequest()
+                            .body("Insufficient quantity for: " + goods.getName());
                 }
-                if (request.getDepartmentId() != null) {
-                    Departments dept = departmentRepository.findById(request.getDepartmentId())
-                            .orElseThrow(() -> new RuntimeException("Department not found"));
-                    transaction.setDepartment(dept);
-                }
-                transaction.setEventReceiverName(request.getEventReceiverName());
-                transaction.setEventReceiverContact(request.getEventReceiverContact());
+
+                goods.setQuantity(goods.getQuantity() - itemReq.getQuantity());
+                goodsRepository.save(goods);
+
+                TransactionsItems item = new TransactionsItems();
+                item.setTransactions(transaction);
+                item.setGoods(goods);
+                item.setQuantity(itemReq.getQuantity());
+                item.setQuantityReturned(0);
+                item.setStatus(TransactionsItems.ItemStatus.ISSUED);
+                items.add(item);
             }
+            transaction.setTransactionItems(items);
 
             transactionRepository.save(transaction);
             return ResponseEntity.ok("Transaction created successfully");
@@ -105,6 +101,7 @@ public class TransactionServiceImpl implements TransactionService {
         }
     }
 
+    // ==================== RETURN ====================
     @Override
     public ResponseEntity<String> returnTransaction(ReturnRequest request) {
         try {
@@ -121,14 +118,33 @@ public class TransactionServiceImpl implements TransactionService {
                 return ResponseEntity.badRequest().body("User not found");
             }
 
-            Goods goods = transaction.getGoods();
-            if (goods != null) {
-                goods.setQuantity(goods.getQuantity() + request.getQuantityReturned());
+            boolean allReturned = true;
+
+            for (ReturnRequest.ReturnItem returnItem : request.getItems()) {
+                TransactionsItems item = transactionItemRepository.findById(returnItem.getTransactionItemId())
+                        .orElseThrow(() -> new RuntimeException("Item not found"));
+
+                // Return to stock
+                Goods goods = item.getGoods();
+                goods.setQuantity(goods.getQuantity() + returnItem.getQuantityReturned());
                 goodsRepository.save(goods);
+
+                // Update item
+                int newReturned = item.getQuantityReturned() + returnItem.getQuantityReturned();
+                item.setQuantityReturned(newReturned);
+
+                if (newReturned >= item.getQuantity()) {
+                    item.setStatus(TransactionsItems.ItemStatus.RETURNED);
+                } else {
+                    item.setStatus(TransactionsItems.ItemStatus.ISSUED);
+                    allReturned = false;
+                }
+                transactionItemRepository.save(item);
             }
 
-            transaction.setQuantityReturned(request.getQuantityReturned());
-            transaction.setStatus(Transactions.TransactionStatus.RETURNED);
+            if (allReturned) {
+                transaction.setStatus(Transactions.TransactionStatus.RETURNED);
+            }
             transaction.setReceivedBy(receivedBy);
             transaction.setReturnDate(LocalDateTime.now());
             transactionRepository.save(transaction);
@@ -143,40 +159,24 @@ public class TransactionServiceImpl implements TransactionService {
         }
     }
 
+    // ==================== UPDATE ====================
     @Override
     public ResponseEntity<String> updateTransaction(Long id, TransactionRequest request) {
         try {
             Transactions transaction = transactionRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Transaction not found"));
 
+            // Update basic fields
             if (request.getApprovedBy() != null) {
                 transaction.setApprovedBy(request.getApprovedBy());
             }
 
-            if ("NORMAL".equalsIgnoreCase(transaction.getTransactionCategory().name())) {
-                if (request.getReceiverName() != null)
-                    transaction.setReceiverName(request.getReceiverName());
-                if (request.getReceiverContact() != null)
-                    transaction.setReceiverContact(request.getReceiverContact());
-                if (request.getReceiverDutyPlace() != null)
-                    transaction.setReceiverDutyPlace(request.getReceiverDutyPlace());
-            }
+            // Set category-specific details
+            setCategoryDetails(transaction, request);
 
-            if ("EVENT".equalsIgnoreCase(transaction.getTransactionCategory().name())) {
-                if (request.getEventId() != null) {
-                    Events event = eventRepository.findById(request.getEventId())
-                            .orElseThrow(() -> new RuntimeException("Event not found"));
-                    transaction.setEvent(event);
-                }
-                if (request.getDepartmentId() != null) {
-                    Departments dept = departmentRepository.findById(request.getDepartmentId())
-                            .orElseThrow(() -> new RuntimeException("Department not found"));
-                    transaction.setDepartment(dept);
-                }
-                if (request.getEventReceiverName() != null)
-                    transaction.setEventReceiverName(request.getEventReceiverName());
-                if (request.getEventReceiverContact() != null)
-                    transaction.setEventReceiverContact(request.getEventReceiverContact());
+            // Update items - ADD NEW or UPDATE EXISTING
+            if (request.getItems() != null && !request.getItems().isEmpty()) {
+                updateTransactionItems(transaction, request);
             }
 
             transactionRepository.save(transaction);
@@ -190,15 +190,17 @@ public class TransactionServiceImpl implements TransactionService {
         }
     }
 
+    // ==================== DELETE ====================
     @Override
     public ResponseEntity<String> deleteTransaction(Long id) {
         try {
             Transactions transaction = transactionRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Transaction not found"));
 
-            Goods goods = transaction.getGoods();
-            if (goods != null && transaction.getQuantityIssued() != null) {
-                goods.setQuantity(goods.getQuantity() + transaction.getQuantityIssued());
+            // Return all items to stock
+            for (TransactionsItems item : transaction.getTransactionItems()) {
+                Goods goods = item.getGoods();
+                goods.setQuantity(goods.getQuantity() + item.getQuantity());
                 goodsRepository.save(goods);
             }
 
@@ -213,6 +215,7 @@ public class TransactionServiceImpl implements TransactionService {
         }
     }
 
+    // ==================== GET BY ID ====================
     @Override
     public ResponseEntity<TransactionResponse> getTransactionById(Long id) {
         Transactions t = transactionRepository.findById(id).orElse(null);
@@ -220,6 +223,7 @@ public class TransactionServiceImpl implements TransactionService {
         return ResponseEntity.ok(mapToResponse(t));
     }
 
+    // ==================== GET ALL ====================
     @Override
     public ResponseEntity<List<TransactionResponse>> getAllTransactions() {
         List<Transactions> list = transactionRepository.findAll();
@@ -230,147 +234,226 @@ public class TransactionServiceImpl implements TransactionService {
         return ResponseEntity.ok(responses);
     }
 
+    // ==================== FILTERS ====================
     @Override
     public ResponseEntity<List<TransactionResponse>> getByCategory(String category) {
         Transactions.TransactionCategory cat = Transactions.TransactionCategory.valueOf(category.toUpperCase());
         List<Transactions> list = transactionRepository.findByTransactionCategory(cat);
-        List<TransactionResponse> responses = new ArrayList<>();
-        for (Transactions t : list) {
-            responses.add(mapToResponse(t));
-        }
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(mapToResponseList(list));
     }
 
     @Override
     public ResponseEntity<List<TransactionResponse>> getByEventId(Long eventId) {
         List<Transactions> list = transactionRepository.findByEventId(eventId);
-        List<TransactionResponse> responses = new ArrayList<>();
-        for (Transactions t : list) {
-            responses.add(mapToResponse(t));
-        }
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(mapToResponseList(list));
     }
 
     @Override
     public ResponseEntity<List<TransactionResponse>> getByEventName(String eventName) {
         List<Transactions> list = transactionRepository.findByEvent_EventNameContainingIgnoreCase(eventName);
-        List<TransactionResponse> responses = new ArrayList<>();
-        for (Transactions t : list) {
-            responses.add(mapToResponse(t));
-        }
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(mapToResponseList(list));
     }
 
     @Override
     public ResponseEntity<List<TransactionResponse>> getByDepartmentId(Long departmentId) {
         List<Transactions> list = transactionRepository.findByDepartmentId(departmentId);
-        List<TransactionResponse> responses = new ArrayList<>();
-        for (Transactions t : list) {
-            responses.add(mapToResponse(t));
-        }
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(mapToResponseList(list));
     }
 
     @Override
     public ResponseEntity<List<TransactionResponse>> getByDepartmentName(String departmentName) {
         List<Transactions> list = transactionRepository.findByDepartment_DepartmentNameContainingIgnoreCase(departmentName);
-        List<TransactionResponse> responses = new ArrayList<>();
-        for (Transactions t : list) {
-            responses.add(mapToResponse(t));
-        }
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(mapToResponseList(list));
     }
 
     @Override
     public ResponseEntity<List<TransactionResponse>> getByReceiverName(String name) {
         List<Transactions> list = transactionRepository.findByReceiverNameContainingIgnoreCase(name);
-        List<TransactionResponse> responses = new ArrayList<>();
-        for (Transactions t : list) {
-            responses.add(mapToResponse(t));
-        }
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(mapToResponseList(list));
     }
 
     @Override
     public ResponseEntity<List<TransactionResponse>> getByReceiverContact(String contact) {
         List<Transactions> list = transactionRepository.findByReceiverContact(contact);
-        List<TransactionResponse> responses = new ArrayList<>();
-        for (Transactions t : list) {
-            responses.add(mapToResponse(t));
-        }
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(mapToResponseList(list));
     }
 
     @Override
     public ResponseEntity<List<TransactionResponse>> getByEventReceiverName(String name) {
         List<Transactions> list = transactionRepository.findByEventReceiverNameContainingIgnoreCase(name);
-        List<TransactionResponse> responses = new ArrayList<>();
-        for (Transactions t : list) {
-            responses.add(mapToResponse(t));
-        }
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(mapToResponseList(list));
     }
 
     @Override
     public ResponseEntity<List<TransactionResponse>> getByEventReceiverContact(String contact) {
         List<Transactions> list = transactionRepository.findByEventReceiverContact(contact);
-        List<TransactionResponse> responses = new ArrayList<>();
-        for (Transactions t : list) {
-            responses.add(mapToResponse(t));
-        }
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(mapToResponseList(list));
     }
 
     @Override
     public ResponseEntity<List<TransactionResponse>> getByIssuedBy(Long userId) {
         List<Transactions> list = transactionRepository.findByIssuedById(userId);
-        List<TransactionResponse> responses = new ArrayList<>();
-        for (Transactions t : list) {
-            responses.add(mapToResponse(t));
-        }
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(mapToResponseList(list));
     }
 
     @Override
     public ResponseEntity<List<TransactionResponse>> getByReceivedBy(Long userId) {
         List<Transactions> list = transactionRepository.findByReceivedById(userId);
-        List<TransactionResponse> responses = new ArrayList<>();
-        for (Transactions t : list) {
-            responses.add(mapToResponse(t));
-        }
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(mapToResponseList(list));
     }
 
     @Override
     public ResponseEntity<List<TransactionResponse>> getByApprovedBy(String approvedBy) {
         List<Transactions> list = transactionRepository.findByApprovedByContainingIgnoreCase(approvedBy);
-        List<TransactionResponse> responses = new ArrayList<>();
-        for (Transactions t : list) {
-            responses.add(mapToResponse(t));
-        }
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(mapToResponseList(list));
     }
 
     @Override
     public ResponseEntity<List<TransactionResponse>> getByIssueDateRange(LocalDateTime start, LocalDateTime end) {
         List<Transactions> list = transactionRepository.findByIssueDateBetween(start, end);
-        List<TransactionResponse> responses = new ArrayList<>();
-        for (Transactions t : list) {
-            responses.add(mapToResponse(t));
-        }
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(mapToResponseList(list));
     }
 
     @Override
     public ResponseEntity<List<TransactionResponse>> getByReturnDateRange(LocalDateTime start, LocalDateTime end) {
         List<Transactions> list = transactionRepository.findByReturnDateBetween(start, end);
-        List<TransactionResponse> responses = new ArrayList<>();
-        for (Transactions t : list) {
-            responses.add(mapToResponse(t));
-        }
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(mapToResponseList(list));
     }
 
+    // ==================== PRIVATE HELPER METHODS ====================
+
+    /**
+     * Set category-specific details (NORMAL or EVENT)
+     */
+    private void setCategoryDetails(Transactions transaction, TransactionRequest request) {
+        if ("NORMAL".equalsIgnoreCase(request.getTransactionCategory())) {
+            setNormalDetails(transaction, request);
+        }
+        if ("EVENT".equalsIgnoreCase(request.getTransactionCategory())) {
+            setEventDetails(transaction, request);
+        }
+    }
+
+    /**
+     * Set EVENT transaction details
+     */
+    private void setEventDetails(Transactions transaction, TransactionRequest request) {
+        if (request.getEventId() != null) {
+            Events event = eventRepository.findById(request.getEventId())
+                    .orElseThrow(() -> new RuntimeException("Event not found with ID: " + request.getEventId()));
+            transaction.setEvent(event);
+        }
+        if (request.getDepartmentId() != null) {
+            Departments dept = departmentRepository.findById(request.getDepartmentId())
+                    .orElseThrow(() -> new RuntimeException("Department not found with ID: " + request.getDepartmentId()));
+            transaction.setDepartment(dept);
+        }
+        if (request.getEventReceiverName() != null) {
+            transaction.setEventReceiverName(request.getEventReceiverName());
+        }
+        if (request.getEventReceiverContact() != null) {
+            transaction.setEventReceiverContact(request.getEventReceiverContact());
+        }
+    }
+
+    /**
+     * Set NORMAL transaction details
+     */
+    private void setNormalDetails(Transactions transaction, TransactionRequest request) {
+        if (request.getReceiverName() != null) {
+            transaction.setReceiverName(request.getReceiverName());
+        }
+        if (request.getReceiverContact() != null) {
+            transaction.setReceiverContact(request.getReceiverContact());
+        }
+        if (request.getReceiverDutyPlace() != null) {
+            transaction.setReceiverDutyPlace(request.getReceiverDutyPlace());
+        }
+    }
+
+    /**
+     * Update transaction items - add new or update existing quantities
+     */
+    private void updateTransactionItems(Transactions transaction, TransactionRequest request) {
+        List<TransactionsItems> existingItems = transaction.getTransactionItems();
+
+        for (TransactionRequest.ItemRequest itemReq : request.getItems()) {
+            Goods goods = goodsRepository.findById(itemReq.getGoodsId())
+                    .orElseThrow(() -> new RuntimeException("Goods not found: " + itemReq.getGoodsId()));
+
+            // Find existing item
+            TransactionsItems existingItem = existingItems.stream()
+                    .filter(ei -> ei.getGoods().getId().equals(itemReq.getGoodsId()))
+                    .findFirst().orElse(null);
+
+            if (existingItem != null) {
+                // UPDATE existing item quantity
+                updateExistingItem(existingItem, goods, itemReq.getQuantity());
+            } else {
+                // ADD new item
+                addNewItem(transaction, goods, itemReq.getQuantity(), existingItems);
+            }
+        }
+    }
+
+    /**
+     * Update quantity of an existing transaction item
+     */
+    private void updateExistingItem(TransactionsItems item, Goods goods, int newQuantity) {
+        int oldQuantity = item.getQuantity();
+        int diff = newQuantity - oldQuantity;
+
+        if (diff > 0) {
+            // Increasing - check stock
+            if (goods.getQuantity() < diff) {
+                throw new RuntimeException("Insufficient quantity for: " + goods.getName() +
+                        ". Available: " + goods.getQuantity() + ", Needed: " + diff);
+            }
+            goods.setQuantity(goods.getQuantity() - diff);
+        } else if (diff < 0) {
+            // Decreasing - return to stock
+            goods.setQuantity(goods.getQuantity() + Math.abs(diff));
+        }
+        goodsRepository.save(goods);
+        item.setQuantity(newQuantity);
+        transactionItemRepository.save(item);
+    }
+
+    /**
+     * Add a new item to transaction
+     */
+    private void addNewItem(Transactions transaction, Goods goods, int quantity, List<TransactionsItems> existingItems) {
+        if (goods.getQuantity() < quantity) {
+            throw new RuntimeException("Insufficient quantity for: " + goods.getName());
+        }
+
+        goods.setQuantity(goods.getQuantity() - quantity);
+        goodsRepository.save(goods);
+
+        TransactionsItems newItem = new TransactionsItems();
+        newItem.setTransactions(transaction);
+        newItem.setGoods(goods);
+        newItem.setQuantity(quantity);
+        newItem.setQuantityReturned(0);
+        newItem.setStatus(TransactionsItems.ItemStatus.ISSUED);
+        transactionItemRepository.save(newItem);
+        existingItems.add(newItem);
+    }
+
+    /**
+     * Map entity list to response list
+     */
+    private List<TransactionResponse> mapToResponseList(List<Transactions> transactions) {
+        List<TransactionResponse> responses = new ArrayList<>();
+        for (Transactions t : transactions) {
+            responses.add(mapToResponse(t));
+        }
+        return responses;
+    }
+
+    /**
+     * Map single transaction entity to response
+     */
     private TransactionResponse mapToResponse(Transactions t) {
         TransactionResponse response = new TransactionResponse();
         response.setId(t.getId());
@@ -381,10 +464,6 @@ public class TransactionServiceImpl implements TransactionService {
         response.setReceivedById(t.getReceivedBy() != null ? t.getReceivedBy().getId() : null);
         response.setReceivedByName(t.getReceivedBy() != null ? t.getReceivedBy().getFullName() : null);
         response.setApprovedBy(t.getApprovedBy());
-        response.setGoodsId(t.getGoods() != null ? t.getGoods().getId() : null);
-        response.setGoodsName(t.getGoods() != null ? t.getGoods().getName() : null);
-        response.setQuantityIssued(t.getQuantityIssued());
-        response.setQuantityReturned(t.getQuantityReturned());
         response.setIssueDate(t.getIssueDate());
         response.setReturnDate(t.getReturnDate());
         response.setReceiverName(t.getReceiverName());
@@ -397,6 +476,26 @@ public class TransactionServiceImpl implements TransactionService {
         response.setEventReceiverName(t.getEventReceiverName());
         response.setEventReceiverContact(t.getEventReceiverContact());
         response.setCreatedAt(t.getCreatedAt());
+
+        // Map items
+        List<TransactionResponse.ItemResponse> itemResponses = new ArrayList<>();
+        if (t.getTransactionItems() != null) {
+            for (TransactionsItems item : t.getTransactionItems()) {
+                TransactionResponse.ItemResponse ir = new TransactionResponse.ItemResponse();
+                ir.setId(item.getId());
+                ir.setGoodsId(item.getGoods().getId());
+                ir.setGoodsName(item.getGoods().getName());
+                if (item.getGoods().getCategory() != null) {
+                    ir.setUnit(item.getGoods().getCategory().getUnit());
+                }
+                ir.setQuantity(item.getQuantity());
+                ir.setQuantityReturned(item.getQuantityReturned());
+                ir.setStatus(item.getStatus().name());
+                itemResponses.add(ir);
+            }
+        }
+        response.setItems(itemResponses);
+
         return response;
     }
 }
