@@ -3,19 +3,16 @@ package com.warehouse_management.requests;
 import java.util.List;
 
 public class TransactionRequest {
-
     private String transactionCategory;
     private String approvedBy;
-
-    // Multiple items
     private List<ItemRequest> items;
 
-    // NORMAL transaction
+    // Normal fields
     private String receiverName;
     private String receiverContact;
     private String receiverDutyPlace;
 
-    // EVENT transaction
+    // Event fields
     private Long eventId;
     private Long departmentId;
     private String eventReceiverName;
@@ -24,13 +21,17 @@ public class TransactionRequest {
     public static class ItemRequest {
         private Long goodsId;
         private Integer quantity;
+        private String returnableType; // RETURNABLE or NON_RETURNABLE
 
         public Long getGoodsId() { return goodsId; }
         public void setGoodsId(Long goodsId) { this.goodsId = goodsId; }
         public Integer getQuantity() { return quantity; }
         public void setQuantity(Integer quantity) { this.quantity = quantity; }
+        public String getReturnableType() { return returnableType; }
+        public void setReturnableType(String returnableType) { this.returnableType = returnableType; }
     }
 
+    // Getters and Setters
     public String getTransactionCategory() { return transactionCategory; }
     public void setTransactionCategory(String transactionCategory) { this.transactionCategory = transactionCategory; }
     public String getApprovedBy() { return approvedBy; }

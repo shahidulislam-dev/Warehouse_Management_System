@@ -61,35 +61,26 @@ public class TransactionServiceImpl implements TransactionService {
             transaction.setIssuedBy(issuedBy);
             transaction.setIssueDate(LocalDateTime.now());
             transaction.setApprovedBy(request.getApprovedBy());
-            transaction.setStatus(Transactions.TransactionStatus.ISSUED);
 
-            // Set category-specific details
             setCategoryDetails(transaction, request);
 
-            // Save multiple items
             List<TransactionsItems> items = new ArrayList<>();
             for (TransactionRequest.ItemRequest itemReq : request.getItems()) {
                 Goods goods = goodsRepository.findById(itemReq.getGoodsId())
                         .orElseThrow(() -> new RuntimeException("Goods not found: " + itemReq.getGoodsId()));
 
-                if (goods.getQuantity() < itemReq.getQuantity()) {
-                    return ResponseEntity.badRequest()
-                            .body("Insufficient quantity for: " + goods.getName());
+                try {
+                    reduceStock(goods, itemReq.getQuantity(), goods.getName());
+                } catch (RuntimeException e) {
+                    return ResponseEntity.badRequest().body(e.getMessage());
                 }
 
-                goods.setQuantity(goods.getQuantity() - itemReq.getQuantity());
-                goodsRepository.save(goods);
-
-                TransactionsItems item = new TransactionsItems();
-                item.setTransactions(transaction);
-                item.setGoods(goods);
-                item.setQuantity(itemReq.getQuantity());
-                item.setQuantityReturned(0);
-                item.setStatus(TransactionsItems.ItemStatus.ISSUED);
+                TransactionsItems item = createTransactionItem(transaction, goods, itemReq);
                 items.add(item);
             }
             transaction.setTransactionItems(items);
 
+            updateTransactionStatus(transaction);
             transactionRepository.save(transaction);
             return ResponseEntity.ok("Transaction created successfully");
 
@@ -108,8 +99,8 @@ public class TransactionServiceImpl implements TransactionService {
             Transactions transaction = transactionRepository.findById(request.getTransactionId())
                     .orElseThrow(() -> new RuntimeException("Transaction not found"));
 
-            if (transaction.getStatus() != Transactions.TransactionStatus.ISSUED) {
-                return ResponseEntity.badRequest().body("Transaction already returned or cancelled");
+            if (transaction.getStatus() == Transactions.TransactionStatus.CANCELLED) {
+                return ResponseEntity.badRequest().body("Transaction is cancelled");
             }
 
             String currentUser = jwtFilter.getCurrentUser();
@@ -118,38 +109,63 @@ public class TransactionServiceImpl implements TransactionService {
                 return ResponseEntity.badRequest().body("User not found");
             }
 
-            boolean allReturned = true;
-
             for (ReturnRequest.ReturnItem returnItem : request.getItems()) {
                 TransactionsItems item = transactionItemRepository.findById(returnItem.getTransactionItemId())
-                        .orElseThrow(() -> new RuntimeException("Item not found"));
+                        .orElseThrow(() -> new RuntimeException("Item not found: " + returnItem.getTransactionItemId()));
 
-                // Return to stock
-                Goods goods = item.getGoods();
-                goods.setQuantity(goods.getQuantity() + returnItem.getQuantityReturned());
-                goodsRepository.save(goods);
+                int returned = returnItem.getQuantityReturned() != null ? returnItem.getQuantityReturned() : 0;
+                int damaged = returnItem.getQuantityDamaged() != null ? returnItem.getQuantityDamaged() : 0;
+                int lost = returnItem.getQuantityLost() != null ? returnItem.getQuantityLost() : 0;
 
-                // Update item
-                int newReturned = item.getQuantityReturned() + returnItem.getQuantityReturned();
-                item.setQuantityReturned(newReturned);
+                if (returned == 0 && damaged == 0 && lost == 0) continue;
 
-                if (newReturned >= item.getQuantity()) {
-                    item.setStatus(TransactionsItems.ItemStatus.RETURNED);
-                } else {
-                    item.setStatus(TransactionsItems.ItemStatus.ISSUED);
-                    allReturned = false;
+                int currentReturned = item.getQuantityReturned() != null ? item.getQuantityReturned() : 0;
+                int currentLost = item.getQuantityLost() != null ? item.getQuantityLost() : 0;
+                int currentDamaged = item.getQuantityDamaged() != null ? item.getQuantityDamaged() : 0;
+
+                int alreadyResolved = currentReturned + currentLost;
+                int remaining = item.getQuantity() - alreadyResolved;
+                int newTotal = returned + damaged + lost;
+
+                if (newTotal > remaining) {
+                    return ResponseEntity.badRequest().body(
+                            "Cannot process more than remaining for: " + item.getGoods().getName() +
+                                    ". Issued: " + item.getQuantity() +
+                                    ", Already resolved: " + alreadyResolved +
+                                    ", Remaining: " + remaining +
+                                    ", Attempted: " + newTotal
+                    );
+                }
+
+                // Process stock - only for returnable items
+                if (item.getReturnableType() != TransactionsItems.ReturnableType.NON_RETURNABLE) {
+                    int totalToStock = returned + damaged;
+                    if (totalToStock > 0) {
+                        addStock(item.getGoods(), totalToStock);
+                    }
+                }
+
+                // Update quantities
+                item.setQuantityReturned(currentReturned + returned + damaged);
+                if (damaged > 0) item.setQuantityDamaged(currentDamaged + damaged);
+                if (lost > 0) item.setQuantityLost(currentLost + lost);
+
+                item.setStatus(determineItemStatus(item, null));
+                if (returnItem.getNotes() != null && !returnItem.getNotes().trim().isEmpty()) {
+                    item.setNotes(returnItem.getNotes());
                 }
                 transactionItemRepository.save(item);
             }
 
-            if (allReturned) {
-                transaction.setStatus(Transactions.TransactionStatus.RETURNED);
-            }
+            updateTransactionStatus(transaction);
             transaction.setReceivedBy(receivedBy);
             transaction.setReturnDate(LocalDateTime.now());
+            if (request.getReturnNotes() != null) {
+                transaction.setReturnNotes(request.getReturnNotes());
+            }
             transactionRepository.save(transaction);
 
-            return ResponseEntity.ok("Transaction returned successfully");
+            return ResponseEntity.ok("Transaction processed successfully");
 
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
@@ -166,19 +182,21 @@ public class TransactionServiceImpl implements TransactionService {
             Transactions transaction = transactionRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Transaction not found"));
 
-            // Update basic fields
+            if (transaction.getStatus() == Transactions.TransactionStatus.CANCELLED) {
+                return ResponseEntity.badRequest().body("Cannot update cancelled transaction");
+            }
+
             if (request.getApprovedBy() != null) {
                 transaction.setApprovedBy(request.getApprovedBy());
             }
 
-            // Set category-specific details
             setCategoryDetails(transaction, request);
 
-            // Update items - ADD NEW or UPDATE EXISTING
             if (request.getItems() != null && !request.getItems().isEmpty()) {
                 updateTransactionItems(transaction, request);
             }
 
+            updateTransactionStatus(transaction);
             transactionRepository.save(transaction);
             return ResponseEntity.ok("Transaction updated successfully");
 
@@ -197,11 +215,14 @@ public class TransactionServiceImpl implements TransactionService {
             Transactions transaction = transactionRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Transaction not found"));
 
-            // Return all items to stock
             for (TransactionsItems item : transaction.getTransactionItems()) {
-                Goods goods = item.getGoods();
-                goods.setQuantity(goods.getQuantity() + item.getQuantity());
-                goodsRepository.save(goods);
+                if (item.getReturnableType() == TransactionsItems.ReturnableType.NON_RETURNABLE) continue;
+
+                int returned = item.getQuantityReturned() != null ? item.getQuantityReturned() : 0;
+                int lost = item.getQuantityLost() != null ? item.getQuantityLost() : 0;
+                int toReturn = item.getQuantity() - lost - returned;
+
+                if (toReturn > 0) addStock(item.getGoods(), toReturn);
             }
 
             transactionRepository.delete(transaction);
@@ -215,7 +236,7 @@ public class TransactionServiceImpl implements TransactionService {
         }
     }
 
-    // ==================== GET BY ID ====================
+    // ==================== GET METHODS ====================
     @Override
     public ResponseEntity<TransactionResponse> getTransactionById(Long id) {
         Transactions t = transactionRepository.findById(id).orElse(null);
@@ -223,157 +244,147 @@ public class TransactionServiceImpl implements TransactionService {
         return ResponseEntity.ok(mapToResponse(t));
     }
 
-    // ==================== GET ALL ====================
     @Override
     public ResponseEntity<List<TransactionResponse>> getAllTransactions() {
-        List<Transactions> list = transactionRepository.findAll();
-        List<TransactionResponse> responses = new ArrayList<>();
-        for (Transactions t : list) {
-            responses.add(mapToResponse(t));
-        }
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(mapToResponseList(transactionRepository.findAll()));
     }
 
-    // ==================== FILTERS ====================
     @Override
     public ResponseEntity<List<TransactionResponse>> getByCategory(String category) {
         Transactions.TransactionCategory cat = Transactions.TransactionCategory.valueOf(category.toUpperCase());
-        List<Transactions> list = transactionRepository.findByTransactionCategory(cat);
-        return ResponseEntity.ok(mapToResponseList(list));
+        return ResponseEntity.ok(mapToResponseList(transactionRepository.findByTransactionCategory(cat)));
     }
 
     @Override
     public ResponseEntity<List<TransactionResponse>> getByEventId(Long eventId) {
-        List<Transactions> list = transactionRepository.findByEventId(eventId);
-        return ResponseEntity.ok(mapToResponseList(list));
+        return ResponseEntity.ok(mapToResponseList(transactionRepository.findByEventId(eventId)));
     }
 
     @Override
     public ResponseEntity<List<TransactionResponse>> getByEventName(String eventName) {
-        List<Transactions> list = transactionRepository.findByEvent_EventNameContainingIgnoreCase(eventName);
-        return ResponseEntity.ok(mapToResponseList(list));
+        return ResponseEntity.ok(mapToResponseList(transactionRepository.findByEvent_EventNameContainingIgnoreCase(eventName)));
     }
 
     @Override
     public ResponseEntity<List<TransactionResponse>> getByDepartmentId(Long departmentId) {
-        List<Transactions> list = transactionRepository.findByDepartmentId(departmentId);
-        return ResponseEntity.ok(mapToResponseList(list));
+        return ResponseEntity.ok(mapToResponseList(transactionRepository.findByDepartmentId(departmentId)));
     }
 
     @Override
     public ResponseEntity<List<TransactionResponse>> getByDepartmentName(String departmentName) {
-        List<Transactions> list = transactionRepository.findByDepartment_DepartmentNameContainingIgnoreCase(departmentName);
-        return ResponseEntity.ok(mapToResponseList(list));
+        return ResponseEntity.ok(mapToResponseList(transactionRepository.findByDepartment_DepartmentNameContainingIgnoreCase(departmentName)));
     }
 
     @Override
     public ResponseEntity<List<TransactionResponse>> getByReceiverName(String name) {
-        List<Transactions> list = transactionRepository.findByReceiverNameContainingIgnoreCase(name);
-        return ResponseEntity.ok(mapToResponseList(list));
+        return ResponseEntity.ok(mapToResponseList(transactionRepository.findByReceiverNameContainingIgnoreCase(name)));
     }
 
     @Override
     public ResponseEntity<List<TransactionResponse>> getByReceiverContact(String contact) {
-        List<Transactions> list = transactionRepository.findByReceiverContact(contact);
-        return ResponseEntity.ok(mapToResponseList(list));
+        return ResponseEntity.ok(mapToResponseList(transactionRepository.findByReceiverContact(contact)));
     }
 
     @Override
     public ResponseEntity<List<TransactionResponse>> getByEventReceiverName(String name) {
-        List<Transactions> list = transactionRepository.findByEventReceiverNameContainingIgnoreCase(name);
-        return ResponseEntity.ok(mapToResponseList(list));
+        return ResponseEntity.ok(mapToResponseList(transactionRepository.findByEventReceiverNameContainingIgnoreCase(name)));
     }
 
     @Override
     public ResponseEntity<List<TransactionResponse>> getByEventReceiverContact(String contact) {
-        List<Transactions> list = transactionRepository.findByEventReceiverContact(contact);
-        return ResponseEntity.ok(mapToResponseList(list));
+        return ResponseEntity.ok(mapToResponseList(transactionRepository.findByEventReceiverContact(contact)));
     }
 
     @Override
     public ResponseEntity<List<TransactionResponse>> getByIssuedBy(Long userId) {
-        List<Transactions> list = transactionRepository.findByIssuedById(userId);
-        return ResponseEntity.ok(mapToResponseList(list));
+        return ResponseEntity.ok(mapToResponseList(transactionRepository.findByIssuedById(userId)));
     }
 
     @Override
     public ResponseEntity<List<TransactionResponse>> getByReceivedBy(Long userId) {
-        List<Transactions> list = transactionRepository.findByReceivedById(userId);
-        return ResponseEntity.ok(mapToResponseList(list));
+        return ResponseEntity.ok(mapToResponseList(transactionRepository.findByReceivedById(userId)));
     }
 
     @Override
     public ResponseEntity<List<TransactionResponse>> getByApprovedBy(String approvedBy) {
-        List<Transactions> list = transactionRepository.findByApprovedByContainingIgnoreCase(approvedBy);
-        return ResponseEntity.ok(mapToResponseList(list));
+        return ResponseEntity.ok(mapToResponseList(transactionRepository.findByApprovedByContainingIgnoreCase(approvedBy)));
     }
 
     @Override
     public ResponseEntity<List<TransactionResponse>> getByIssueDateRange(LocalDateTime start, LocalDateTime end) {
-        List<Transactions> list = transactionRepository.findByIssueDateBetween(start, end);
-        return ResponseEntity.ok(mapToResponseList(list));
+        return ResponseEntity.ok(mapToResponseList(transactionRepository.findByIssueDateBetween(start, end)));
     }
 
     @Override
     public ResponseEntity<List<TransactionResponse>> getByReturnDateRange(LocalDateTime start, LocalDateTime end) {
-        List<Transactions> list = transactionRepository.findByReturnDateBetween(start, end);
-        return ResponseEntity.ok(mapToResponseList(list));
+        return ResponseEntity.ok(mapToResponseList(transactionRepository.findByReturnDateBetween(start, end)));
     }
 
-    // ==================== PRIVATE HELPER METHODS ====================
+    // ==================== STOCK HELPERS ====================
+    private void reduceStock(Goods goods, int quantity, String goodsName) {
+        if (goods.getQuantity() < quantity) {
+            throw new RuntimeException("Insufficient quantity for: " + goodsName +
+                    ". Available: " + goods.getQuantity() + ", Requested: " + quantity);
+        }
+        goods.setQuantity(goods.getQuantity() - quantity);
+        goodsRepository.save(goods);
+    }
 
-    /**
-     * Set category-specific details (NORMAL or EVENT)
-     */
+    private void addStock(Goods goods, int quantity) {
+        goods.setQuantity(goods.getQuantity() + quantity);
+        goodsRepository.save(goods);
+    }
+
+    // ==================== CATEGORY HELPER ====================
     private void setCategoryDetails(Transactions transaction, TransactionRequest request) {
         if ("NORMAL".equalsIgnoreCase(request.getTransactionCategory())) {
-            setNormalDetails(transaction, request);
+            if (request.getReceiverName() != null) transaction.setReceiverName(request.getReceiverName());
+            if (request.getReceiverContact() != null) transaction.setReceiverContact(request.getReceiverContact());
+            if (request.getReceiverDutyPlace() != null) transaction.setReceiverDutyPlace(request.getReceiverDutyPlace());
         }
         if ("EVENT".equalsIgnoreCase(request.getTransactionCategory())) {
-            setEventDetails(transaction, request);
+            if (request.getEventId() != null) {
+                Events event = eventRepository.findById(request.getEventId())
+                        .orElseThrow(() -> new RuntimeException("Event not found with ID: " + request.getEventId()));
+                transaction.setEvent(event);
+            }
+            if (request.getDepartmentId() != null) {
+                Departments dept = departmentRepository.findById(request.getDepartmentId())
+                        .orElseThrow(() -> new RuntimeException("Department not found with ID: " + request.getDepartmentId()));
+                transaction.setDepartment(dept);
+            }
+            if (request.getEventReceiverName() != null) transaction.setEventReceiverName(request.getEventReceiverName());
+            if (request.getEventReceiverContact() != null) transaction.setEventReceiverContact(request.getEventReceiverContact());
         }
     }
 
-    /**
-     * Set EVENT transaction details
-     */
-    private void setEventDetails(Transactions transaction, TransactionRequest request) {
-        if (request.getEventId() != null) {
-            Events event = eventRepository.findById(request.getEventId())
-                    .orElseThrow(() -> new RuntimeException("Event not found with ID: " + request.getEventId()));
-            transaction.setEvent(event);
+    // ==================== ITEM HELPERS ====================
+    private TransactionsItems createTransactionItem(Transactions transaction, Goods goods, TransactionRequest.ItemRequest itemReq) {
+        TransactionsItems item = new TransactionsItems();
+        item.setTransactions(transaction);
+        item.setGoods(goods);
+        item.setQuantity(itemReq.getQuantity());
+        item.setQuantityReturned(0);
+        item.setQuantityDamaged(0);
+        item.setQuantityLost(0);
+
+        if (itemReq.getReturnableType() != null) {
+            item.setReturnableType(TransactionsItems.ReturnableType.valueOf(itemReq.getReturnableType()));
+        } else {
+            item.setReturnableType(TransactionsItems.ReturnableType.RETURNABLE);
         }
-        if (request.getDepartmentId() != null) {
-            Departments dept = departmentRepository.findById(request.getDepartmentId())
-                    .orElseThrow(() -> new RuntimeException("Department not found with ID: " + request.getDepartmentId()));
-            transaction.setDepartment(dept);
+
+        // ✅ NON-RETURNABLE: Immediately marked as CONSUMED
+        if (item.getReturnableType() == TransactionsItems.ReturnableType.NON_RETURNABLE) {
+            item.setQuantityReturned(itemReq.getQuantity());
+            item.setStatus(TransactionsItems.ItemStatus.CONSUMED);
+        } else {
+            item.setStatus(TransactionsItems.ItemStatus.ISSUED);
         }
-        if (request.getEventReceiverName() != null) {
-            transaction.setEventReceiverName(request.getEventReceiverName());
-        }
-        if (request.getEventReceiverContact() != null) {
-            transaction.setEventReceiverContact(request.getEventReceiverContact());
-        }
+
+        return item;
     }
 
-    /**
-     * Set NORMAL transaction details
-     */
-    private void setNormalDetails(Transactions transaction, TransactionRequest request) {
-        if (request.getReceiverName() != null) {
-            transaction.setReceiverName(request.getReceiverName());
-        }
-        if (request.getReceiverContact() != null) {
-            transaction.setReceiverContact(request.getReceiverContact());
-        }
-        if (request.getReceiverDutyPlace() != null) {
-            transaction.setReceiverDutyPlace(request.getReceiverDutyPlace());
-        }
-    }
-
-    /**
-     * Update transaction items - add new or update existing quantities
-     */
     private void updateTransactionItems(Transactions transaction, TransactionRequest request) {
         List<TransactionsItems> existingItems = transaction.getTransactionItems();
 
@@ -381,79 +392,114 @@ public class TransactionServiceImpl implements TransactionService {
             Goods goods = goodsRepository.findById(itemReq.getGoodsId())
                     .orElseThrow(() -> new RuntimeException("Goods not found: " + itemReq.getGoodsId()));
 
-            // Find existing item
-            TransactionsItems existingItem = existingItems.stream()
-                    .filter(ei -> ei.getGoods().getId().equals(itemReq.getGoodsId()))
-                    .findFirst().orElse(null);
+            TransactionsItems existingItem = null;
+            for (TransactionsItems ei : existingItems) {
+                if (ei.getGoods().getId().equals(itemReq.getGoodsId())) {
+                    existingItem = ei;
+                    break;
+                }
+            }
 
             if (existingItem != null) {
-                // UPDATE existing item quantity
-                updateExistingItem(existingItem, goods, itemReq.getQuantity());
+                int oldQuantity = existingItem.getQuantity();
+                int newQuantity = itemReq.getQuantity();
+                int diff = newQuantity - oldQuantity;
+
+                if (diff > 0) {
+                    // Increasing - take more from stock
+                    reduceStock(goods, diff, goods.getName());
+
+                    // PRESERVE previous return/damage/lost - only cap if they exceed new total
+                    if (existingItem.getQuantityReturned() != null && existingItem.getQuantityReturned() > newQuantity) {
+                        existingItem.setQuantityReturned(newQuantity);
+                    }
+                    if (existingItem.getQuantityDamaged() != null && existingItem.getQuantityDamaged() > newQuantity) {
+                        existingItem.setQuantityDamaged(newQuantity);
+                    }
+                    if (existingItem.getQuantityLost() != null && existingItem.getQuantityLost() > newQuantity) {
+                        existingItem.setQuantityLost(newQuantity);
+                    }
+
+                } else if (diff < 0) {
+                    // Decreasing - return to stock
+                    addStock(goods, Math.abs(diff));
+                }
+
+                existingItem.setQuantity(newQuantity);
+                existingItem.setStatus(determineItemStatus(existingItem, null));
+                transactionItemRepository.save(existingItem);
+
             } else {
                 // ADD new item
-                addNewItem(transaction, goods, itemReq.getQuantity(), existingItems);
+                reduceStock(goods, itemReq.getQuantity(), goods.getName());
+                TransactionsItems newItem = createTransactionItem(transaction, goods, itemReq);
+                transactionItemRepository.save(newItem);
+                existingItems.add(newItem);
             }
         }
     }
 
-    /**
-     * Update quantity of an existing transaction item
-     */
-    private void updateExistingItem(TransactionsItems item, Goods goods, int newQuantity) {
-        int oldQuantity = item.getQuantity();
-        int diff = newQuantity - oldQuantity;
+    // ==================== STATUS HELPERS ====================
+    private TransactionsItems.ItemStatus determineItemStatus(TransactionsItems item, String requestedStatus) {
+        if (requestedStatus != null) {
+            try {
+                return TransactionsItems.ItemStatus.valueOf(requestedStatus);
+            } catch (IllegalArgumentException e) {}
+        }
 
-        if (diff > 0) {
-            // Increasing - check stock
-            if (goods.getQuantity() < diff) {
-                throw new RuntimeException("Insufficient quantity for: " + goods.getName() +
-                        ". Available: " + goods.getQuantity() + ", Needed: " + diff);
+        int totalReturned = item.getQuantityReturned() != null ? item.getQuantityReturned() : 0;
+        int totalLost = item.getQuantityLost() != null ? item.getQuantityLost() : 0;
+        int totalDamaged = item.getQuantityDamaged() != null ? item.getQuantityDamaged() : 0;
+        int totalResolved = totalReturned + totalLost;
+
+        if (item.getReturnableType() == TransactionsItems.ReturnableType.NON_RETURNABLE) {
+            if (totalResolved >= item.getQuantity()) return TransactionsItems.ItemStatus.CONSUMED;
+            else if (totalResolved > 0) return TransactionsItems.ItemStatus.PARTIALLY_CONSUMED;
+            return TransactionsItems.ItemStatus.ISSUED;
+        }
+
+        if (totalResolved <= 0) return TransactionsItems.ItemStatus.ISSUED;
+        else if (totalResolved >= item.getQuantity()) {
+            if (totalDamaged > 0) return TransactionsItems.ItemStatus.DAMAGED;
+            return TransactionsItems.ItemStatus.RETURNED;
+        }
+        return TransactionsItems.ItemStatus.PARTIALLY_RETURNED;
+    }
+
+    private void updateTransactionStatus(Transactions transaction) {
+        List<TransactionsItems> items = transaction.getTransactionItems();
+        boolean allResolved = true;
+
+        for (TransactionsItems item : items) {
+            TransactionsItems.ItemStatus status = item.getStatus();
+            if (status == TransactionsItems.ItemStatus.ISSUED ||
+                    status == TransactionsItems.ItemStatus.PARTIALLY_RETURNED ||
+                    status == TransactionsItems.ItemStatus.PARTIALLY_CONSUMED) {
+                allResolved = false;
+                break;
             }
-            goods.setQuantity(goods.getQuantity() - diff);
-        } else if (diff < 0) {
-            // Decreasing - return to stock
-            goods.setQuantity(goods.getQuantity() + Math.abs(diff));
-        }
-        goodsRepository.save(goods);
-        item.setQuantity(newQuantity);
-        transactionItemRepository.save(item);
-    }
-
-    /**
-     * Add a new item to transaction
-     */
-    private void addNewItem(Transactions transaction, Goods goods, int quantity, List<TransactionsItems> existingItems) {
-        if (goods.getQuantity() < quantity) {
-            throw new RuntimeException("Insufficient quantity for: " + goods.getName());
         }
 
-        goods.setQuantity(goods.getQuantity() - quantity);
-        goodsRepository.save(goods);
-
-        TransactionsItems newItem = new TransactionsItems();
-        newItem.setTransactions(transaction);
-        newItem.setGoods(goods);
-        newItem.setQuantity(quantity);
-        newItem.setQuantityReturned(0);
-        newItem.setStatus(TransactionsItems.ItemStatus.ISSUED);
-        transactionItemRepository.save(newItem);
-        existingItems.add(newItem);
+        if (allResolved) {
+            transaction.setStatus(Transactions.TransactionStatus.RETURNED);
+        } else {
+            boolean anyResolved = items.stream().anyMatch(i ->
+                    i.getStatus() != TransactionsItems.ItemStatus.ISSUED);
+            if (anyResolved) {
+                transaction.setStatus(Transactions.TransactionStatus.PARTIALLY_RETURNED);
+            } else {
+                transaction.setStatus(Transactions.TransactionStatus.ISSUED);
+            }
+        }
     }
 
-    /**
-     * Map entity list to response list
-     */
+    // ==================== MAPPING HELPERS ====================
     private List<TransactionResponse> mapToResponseList(List<Transactions> transactions) {
         List<TransactionResponse> responses = new ArrayList<>();
-        for (Transactions t : transactions) {
-            responses.add(mapToResponse(t));
-        }
+        for (Transactions t : transactions) responses.add(mapToResponse(t));
         return responses;
     }
 
-    /**
-     * Map single transaction entity to response
-     */
     private TransactionResponse mapToResponse(Transactions t) {
         TransactionResponse response = new TransactionResponse();
         response.setId(t.getId());
@@ -466,6 +512,7 @@ public class TransactionServiceImpl implements TransactionService {
         response.setApprovedBy(t.getApprovedBy());
         response.setIssueDate(t.getIssueDate());
         response.setReturnDate(t.getReturnDate());
+        response.setReturnNotes(t.getReturnNotes());
         response.setReceiverName(t.getReceiverName());
         response.setReceiverContact(t.getReceiverContact());
         response.setReceiverDutyPlace(t.getReceiverDutyPlace());
@@ -477,7 +524,6 @@ public class TransactionServiceImpl implements TransactionService {
         response.setEventReceiverContact(t.getEventReceiverContact());
         response.setCreatedAt(t.getCreatedAt());
 
-        // Map items
         List<TransactionResponse.ItemResponse> itemResponses = new ArrayList<>();
         if (t.getTransactionItems() != null) {
             for (TransactionsItems item : t.getTransactionItems()) {
@@ -485,17 +531,18 @@ public class TransactionServiceImpl implements TransactionService {
                 ir.setId(item.getId());
                 ir.setGoodsId(item.getGoods().getId());
                 ir.setGoodsName(item.getGoods().getName());
-                if (item.getGoods().getCategory() != null) {
-                    ir.setUnit(item.getGoods().getCategory().getUnit());
-                }
+                if (item.getGoods().getCategory() != null) ir.setUnit(item.getGoods().getCategory().getUnit());
                 ir.setQuantity(item.getQuantity());
                 ir.setQuantityReturned(item.getQuantityReturned());
+                ir.setQuantityDamaged(item.getQuantityDamaged());
+                ir.setQuantityLost(item.getQuantityLost());
                 ir.setStatus(item.getStatus().name());
+                ir.setReturnableType(item.getReturnableType() != null ? item.getReturnableType().name() : null);
+                ir.setNotes(item.getNotes());
                 itemResponses.add(ir);
             }
         }
         response.setItems(itemResponses);
-
         return response;
     }
 }

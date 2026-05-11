@@ -15,6 +15,7 @@ public class TransactionResponse {
     private String approvedBy;
     private LocalDateTime issueDate;
     private LocalDateTime returnDate;
+    private String returnNotes;
 
     // Normal fields
     private String receiverName;
@@ -34,6 +35,7 @@ public class TransactionResponse {
 
     private LocalDateTime createdAt;
 
+    // ==================== INNER CLASS ====================
     public static class ItemResponse {
         private Long id;
         private Long goodsId;
@@ -41,8 +43,13 @@ public class TransactionResponse {
         private String unit;
         private Integer quantity;
         private Integer quantityReturned;
+        private Integer quantityDamaged;
+        private Integer quantityLost;
         private String status;
+        private String returnableType;
+        private String notes;
 
+        // Getters and Setters
         public Long getId() { return id; }
         public void setId(Long id) { this.id = id; }
         public Long getGoodsId() { return goodsId; }
@@ -55,11 +62,19 @@ public class TransactionResponse {
         public void setQuantity(Integer quantity) { this.quantity = quantity; }
         public Integer getQuantityReturned() { return quantityReturned; }
         public void setQuantityReturned(Integer quantityReturned) { this.quantityReturned = quantityReturned; }
+        public Integer getQuantityDamaged() { return quantityDamaged; }
+        public void setQuantityDamaged(Integer quantityDamaged) { this.quantityDamaged = quantityDamaged; }
+        public Integer getQuantityLost() { return quantityLost; }
+        public void setQuantityLost(Integer quantityLost) { this.quantityLost = quantityLost; }
         public String getStatus() { return status; }
         public void setStatus(String status) { this.status = status; }
+        public String getReturnableType() { return returnableType; }
+        public void setReturnableType(String returnableType) { this.returnableType = returnableType; }
+        public String getNotes() { return notes; }
+        public void setNotes(String notes) { this.notes = notes; }
     }
 
-    // Getters and Setters
+    // ==================== GETTERS AND SETTERS ====================
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getTransactionCategory() { return transactionCategory; }
@@ -80,6 +95,8 @@ public class TransactionResponse {
     public void setIssueDate(LocalDateTime issueDate) { this.issueDate = issueDate; }
     public LocalDateTime getReturnDate() { return returnDate; }
     public void setReturnDate(LocalDateTime returnDate) { this.returnDate = returnDate; }
+    public String getReturnNotes() { return returnNotes; }
+    public void setReturnNotes(String returnNotes) { this.returnNotes = returnNotes; }
     public String getReceiverName() { return receiverName; }
     public void setReceiverName(String receiverName) { this.receiverName = receiverName; }
     public String getReceiverContact() { return receiverContact; }

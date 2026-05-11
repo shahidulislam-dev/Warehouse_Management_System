@@ -7,7 +7,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-
 public class Transactions {
 
     @Id
@@ -22,28 +21,26 @@ public class Transactions {
     @Column(nullable = false)
     private TransactionStatus status;
 
-    // Issued By
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "issued_by")
     private User issuedBy;
 
-    private LocalDateTime issueDate;
-
-    private String approvedBy;
-
-    // Return Info
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "received_by")
     private User receivedBy;
 
+    private LocalDateTime issueDate;
     private LocalDateTime returnDate;
 
-    // ===== NORMAL TRANSACTION FIELDS =====
+    private String approvedBy;
+    private String returnNotes;
+
+    // NORMAL TRANSACTION FIELDS
     private String receiverName;
     private String receiverContact;
     private String receiverDutyPlace;
 
-    // ===== EVENT TRANSACTION FIELDS =====
+    // EVENT TRANSACTION FIELDS
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "event_id")
     private Events event;
@@ -55,7 +52,6 @@ public class Transactions {
     private String eventReceiverName;
     private String eventReceiverContact;
 
-    // ===== MULTIPLE ITEMS =====
     @OneToMany(mappedBy = "transactions", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TransactionsItems> transactionItems = new ArrayList<>();
 
@@ -68,7 +64,10 @@ public class Transactions {
     }
 
     public enum TransactionStatus {
-        ISSUED, RETURNED, CANCELLED
+        ISSUED,
+        PARTIALLY_RETURNED,
+        RETURNED,
+        CANCELLED
     }
 
     // Getters and Setters
@@ -80,14 +79,16 @@ public class Transactions {
     public void setStatus(TransactionStatus status) { this.status = status; }
     public User getIssuedBy() { return issuedBy; }
     public void setIssuedBy(User issuedBy) { this.issuedBy = issuedBy; }
-    public LocalDateTime getIssueDate() { return issueDate; }
-    public void setIssueDate(LocalDateTime issueDate) { this.issueDate = issueDate; }
-    public String getApprovedBy() { return approvedBy; }
-    public void setApprovedBy(String approvedBy) { this.approvedBy = approvedBy; }
     public User getReceivedBy() { return receivedBy; }
     public void setReceivedBy(User receivedBy) { this.receivedBy = receivedBy; }
+    public LocalDateTime getIssueDate() { return issueDate; }
+    public void setIssueDate(LocalDateTime issueDate) { this.issueDate = issueDate; }
     public LocalDateTime getReturnDate() { return returnDate; }
     public void setReturnDate(LocalDateTime returnDate) { this.returnDate = returnDate; }
+    public String getApprovedBy() { return approvedBy; }
+    public void setApprovedBy(String approvedBy) { this.approvedBy = approvedBy; }
+    public String getReturnNotes() { return returnNotes; }
+    public void setReturnNotes(String returnNotes) { this.returnNotes = returnNotes; }
     public String getReceiverName() { return receiverName; }
     public void setReceiverName(String receiverName) { this.receiverName = receiverName; }
     public String getReceiverContact() { return receiverContact; }
