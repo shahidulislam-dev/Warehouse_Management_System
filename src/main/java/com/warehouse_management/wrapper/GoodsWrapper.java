@@ -1,7 +1,7 @@
 package com.warehouse_management.wrapper;
 
 import java.time.LocalDateTime;
-
+@SuppressWarnings("unused")
 public class GoodsWrapper {
     private Long id;
     private String name;

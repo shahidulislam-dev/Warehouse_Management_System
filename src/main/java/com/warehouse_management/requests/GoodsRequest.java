@@ -1,5 +1,5 @@
 package com.warehouse_management.requests;
-
+@SuppressWarnings("unused")
 public class GoodsRequest {
     private String name;
     private int quantity;

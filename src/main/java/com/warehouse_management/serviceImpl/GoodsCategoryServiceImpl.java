@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+
 @Service
 public class GoodsCategoryServiceImpl implements GoodsCategoryService {
     private final GoodsCategoryRepository goodsCategoryRepository;
@@ -59,11 +60,11 @@ public class GoodsCategoryServiceImpl implements GoodsCategoryService {
                 GoodsCategoryResponse response = new GoodsCategoryResponse(c.getId(), c.getName(), c.getUnit(), c.getSizeUnit());
                 return ResponseEntity.ok(response);
             } else {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new GoodsCategoryResponse());
             }
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new GoodsCategoryResponse());
         }
     }
 
@@ -104,4 +105,3 @@ public class GoodsCategoryServiceImpl implements GoodsCategoryService {
         }
     }
 }
-

@@ -2,7 +2,7 @@ package com.warehouse_management.responses;
 
 import java.time.LocalDateTime;
 import java.util.List;
-
+@SuppressWarnings("unused")
 public class TransactionResponse {
 
     private Long id;

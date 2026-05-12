@@ -8,7 +8,6 @@ import com.warehouse_management.repositories.FloorRepository;
 import com.warehouse_management.repositories.WarehouseRepository;
 import com.warehouse_management.requests.FloorRequest;
 import com.warehouse_management.responses.FloorResponse;
-import com.warehouse_management.responses.WarehouseResponse;
 import com.warehouse_management.services.FloorService;
 import com.warehouse_management.utils.WarehouseUtils;
 import com.warehouse_management.wrapper.FloorWrapper;
@@ -96,7 +95,7 @@ public class FloorServiceImpl implements FloorService {
             return ResponseEntity.ok(floorWrappers);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(null);
+                    .body(new ArrayList<>());
         }
     }
 

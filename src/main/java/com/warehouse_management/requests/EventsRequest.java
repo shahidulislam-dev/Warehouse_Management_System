@@ -1,7 +1,7 @@
 package com.warehouse_management.requests;
 
 import java.time.LocalDateTime;
-
+@SuppressWarnings("unused")
 public class EventsRequest {
 
     private String eventName;

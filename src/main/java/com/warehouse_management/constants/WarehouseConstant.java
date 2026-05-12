@@ -1,7 +1,7 @@
 package com.warehouse_management.constants;
 
 import java.util.List;
-
+@SuppressWarnings("unused")
 public class WarehouseConstant {
     public static final String SOMETHING_WENT_WRONG = "Something went wrong";
     public static final String INVALID_DATA = "Invalid Data.";

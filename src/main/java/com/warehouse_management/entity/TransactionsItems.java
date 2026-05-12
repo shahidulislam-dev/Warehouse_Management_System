@@ -1,7 +1,7 @@
 package com.warehouse_management.entity;
 
 import jakarta.persistence.*;
-
+@SuppressWarnings("unused")
 @Entity
 public class TransactionsItems {
 
@@ -10,11 +10,9 @@ public class TransactionsItems {
     private Long id;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "transaction_id")
     private Transactions transactions;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "goods_id")
     private Goods goods;
 
     private Integer quantity;
@@ -26,9 +24,9 @@ public class TransactionsItems {
     private ItemStatus status;
 
     @Enumerated(EnumType.STRING)
-    private ReturnableType returnableType; // RETURNABLE or NON_RETURNABLE
+    private ReturnableType returnableType;
 
-    private String notes; // Notes about damage/loss
+    private String notes;
 
     public enum ItemStatus {
         ISSUED,

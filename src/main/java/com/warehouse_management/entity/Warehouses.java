@@ -3,6 +3,7 @@ package com.warehouse_management.entity;
 import jakarta.persistence.*;
 
 import java.util.List;
+@SuppressWarnings("unused")
 @NamedQuery(name = "Warehouses.getAllWarehouses", query = "select new com.warehouse_management.wrapper.WarehouseWrapper(w.id, w.name) from Warehouses w")
 @Entity
 

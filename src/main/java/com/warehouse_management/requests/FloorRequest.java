@@ -1,5 +1,5 @@
 package com.warehouse_management.requests;
-
+@SuppressWarnings("unused")
 public class FloorRequest {
     private String name;
     private Long warehouseId;

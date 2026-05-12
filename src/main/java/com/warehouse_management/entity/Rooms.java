@@ -1,5 +1,6 @@
 package com.warehouse_management.entity;
 import jakarta.persistence.*;
+@SuppressWarnings("unused")
 @NamedQuery(
         name = "Rooms.getAllRooms",
         query = "select new com.warehouse_management.wrapper.RoomsWrapper(r.id, r.name,r.floors.name,r.floors.warehouses.name) from Rooms r"

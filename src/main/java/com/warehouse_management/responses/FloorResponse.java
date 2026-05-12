@@ -1,5 +1,5 @@
 package com.warehouse_management.responses;
-
+@SuppressWarnings("unused")
 public class FloorResponse {
     private Long id;
     private String name;

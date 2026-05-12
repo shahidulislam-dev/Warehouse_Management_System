@@ -1,5 +1,5 @@
 package com.warehouse_management.wrapper;
-
+@SuppressWarnings("unused")
 public class GoodsCategoryWrapper {
     private Long id;
     private String name;

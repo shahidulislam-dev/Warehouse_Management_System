@@ -1,5 +1,5 @@
 package com.warehouse_management.requests;
-
+@SuppressWarnings("unused")
 public class GoodsCategoryRequest {
     private String name;
     private String unit;

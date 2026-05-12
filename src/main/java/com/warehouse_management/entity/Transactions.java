@@ -5,7 +5,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-
+@SuppressWarnings("unused")
 @Entity
 public class Transactions {
 
@@ -22,11 +22,9 @@ public class Transactions {
     private TransactionStatus status;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "issued_by")
     private User issuedBy;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "received_by")
     private User receivedBy;
 
     private LocalDateTime issueDate;
@@ -42,11 +40,9 @@ public class Transactions {
 
     // EVENT TRANSACTION FIELDS
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "event_id")
     private Events event;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "department_id")
     private Departments department;
 
     private String eventReceiverName;

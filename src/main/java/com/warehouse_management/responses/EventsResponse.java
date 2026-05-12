@@ -1,7 +1,7 @@
 package com.warehouse_management.responses;
 
 import java.time.LocalDateTime;
-
+@SuppressWarnings("unused")
 public class EventsResponse {
 
     private Long id;

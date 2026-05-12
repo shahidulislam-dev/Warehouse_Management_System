@@ -1,5 +1,6 @@
 package com.warehouse_management.wrapper;
 
+@SuppressWarnings("unused")
 public class RoomsWrapper {
     private Long id;
     private String name;

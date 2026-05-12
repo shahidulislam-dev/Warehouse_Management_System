@@ -2,7 +2,7 @@ package com.warehouse_management.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
-
+@SuppressWarnings("unused")
 @NamedQueries({
         @NamedQuery(
                 name = "Goods.getAllGoods",
@@ -37,6 +37,7 @@ import java.time.LocalDateTime;
                         "from Goods g where g.rooms.id = :roomId"
         )
 })
+
 @Entity
 public class Goods {
     @Id
@@ -50,11 +51,9 @@ public class Goods {
     private LocalDateTime updateDate;
 
     @ManyToOne
-    @JoinColumn(name = "created_by")
     private User createdBy;
 
     @ManyToOne
-    @JoinColumn(name = "category_id")
     private GoodsCategory category;
 
     @ManyToOne

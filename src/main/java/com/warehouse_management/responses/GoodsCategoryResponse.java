@@ -1,5 +1,5 @@
 package com.warehouse_management.responses;
-
+@SuppressWarnings("unused")
 public class GoodsCategoryResponse {
     private Long id;
 

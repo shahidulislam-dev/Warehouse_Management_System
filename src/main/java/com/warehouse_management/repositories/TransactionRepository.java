@@ -40,5 +40,5 @@ public interface TransactionRepository extends JpaRepository<Transactions, Long>
     List<Transactions> findByReturnDateBetween(LocalDateTime start, LocalDateTime end);
 
     // By status
-    List<Transactions> findByStatus(Transactions.TransactionStatus status);
+//    List<Transactions> findByStatus(Transactions.TransactionStatus status);
 }

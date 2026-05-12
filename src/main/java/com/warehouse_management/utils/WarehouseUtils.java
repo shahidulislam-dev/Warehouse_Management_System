@@ -15,36 +15,38 @@ import java.io.File;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+
 @Slf4j
 @NoArgsConstructor
+@SuppressWarnings("unused")
 public class WarehouseUtils {
-    public static ResponseEntity<String> getResponseEntity(String responseMessage, HttpStatus httpStatus){
-        return new ResponseEntity<>("{\"message\":\""+responseMessage+"\"}", httpStatus);
+
+    public static ResponseEntity<String> getResponseEntity(String responseMessage, HttpStatus httpStatus) {
+        return new ResponseEntity<>("{\"message\":\"" + responseMessage + "\"}", httpStatus);
     }
 
-    public static String generateUUID(){
+    public static String generateUUID() {
         Date date = new Date();
         long time = date.getTime();
-        return "BILL-"+time;
+        return "BILL-" + time;
     }
 
     public static JSONArray getJsonArrayFromString(String data) throws JSONException {
-        JSONArray jsonArray = new JSONArray(data);
-        return jsonArray;
+        return new JSONArray(data);
     }
 
-    public static Map<String,Object> getMapFromJson(String data){
+    public static Map<String, Object> getMapFromJson(String data) {
         if (!Strings.isNullOrEmpty(data))
-            return new Gson().fromJson(data, new TypeToken<Map<String,Object>>(){
+            return new Gson().fromJson(data, new TypeToken<Map<String, Object>>() {
             }.getType());
-        return new  HashMap<>();
+        return new HashMap<>();
     }
 
-    public static Boolean isFileExist(String path){
+    public static Boolean isFileExist(String path) {
         try {
             File file = new File(path);
             return file.exists() ? Boolean.TRUE : Boolean.FALSE;
-        }catch (Exception ex){
+        } catch (Exception ex) {
             ex.printStackTrace();
         }
         return false;

@@ -1,5 +1,5 @@
 package com.warehouse_management.wrapper;
-
+@SuppressWarnings("unused")
 public class FloorWrapper {
     private Long id;
     private String name;

@@ -24,13 +24,13 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Transactional
     @Modifying
-    Integer updateStatus(@Param("status") String status, @Param("id") Integer id);
+    void updateStatus(@Param("status") String status, @Param("id") Integer id);
 
     // NEW METHOD: Update both status and role
     @Transactional
     @Modifying
     @Query("update User u set u.status = :status, u.role = :role where u.id = :id")
-    Integer updateStatusAndRole(@Param("status") String status, @Param("role") String role, @Param("id") Long id);
+    void updateStatusAndRole(@Param("status") String status, @Param("role") String role, @Param("id") Long id);
 
     User findByEmail(String email);
 

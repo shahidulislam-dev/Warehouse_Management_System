@@ -1,7 +1,7 @@
 package com.warehouse_management.entity;
 import jakarta.persistence.*;
 import java.util.List;
-
+@SuppressWarnings("unused")
 @Entity
 public class GoodsCategory {
     @Id

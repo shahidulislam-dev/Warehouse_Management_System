@@ -119,9 +119,9 @@ public class TransactionServiceImpl implements TransactionService {
 
                 if (returned == 0 && damaged == 0 && lost == 0) continue;
 
-                int currentReturned = item.getQuantityReturned() != null ? item.getQuantityReturned() : 0;
-                int currentLost = item.getQuantityLost() != null ? item.getQuantityLost() : 0;
-                int currentDamaged = item.getQuantityDamaged() != null ? item.getQuantityDamaged() : 0;
+                int currentReturned = getQuantityReturned(item);
+                int currentLost = getQuantityLost(item);
+                int currentDamaged = getQuantityDamaged(item);
 
                 int alreadyResolved = currentReturned + currentLost;
                 int remaining = item.getQuantity() - alreadyResolved;
@@ -137,7 +137,7 @@ public class TransactionServiceImpl implements TransactionService {
                     );
                 }
 
-                // Process stock - only for returnable items
+                // Return to stock for returnable items
                 if (item.getReturnableType() != TransactionsItems.ReturnableType.NON_RETURNABLE) {
                     int totalToStock = returned + damaged;
                     if (totalToStock > 0) {
@@ -150,7 +150,7 @@ public class TransactionServiceImpl implements TransactionService {
                 if (damaged > 0) item.setQuantityDamaged(currentDamaged + damaged);
                 if (lost > 0) item.setQuantityLost(currentLost + lost);
 
-                item.setStatus(determineItemStatus(item, null));
+                item.setStatus(determineItemStatus(item));
                 if (returnItem.getNotes() != null && !returnItem.getNotes().trim().isEmpty()) {
                     item.setNotes(returnItem.getNotes());
                 }
@@ -218,8 +218,8 @@ public class TransactionServiceImpl implements TransactionService {
             for (TransactionsItems item : transaction.getTransactionItems()) {
                 if (item.getReturnableType() == TransactionsItems.ReturnableType.NON_RETURNABLE) continue;
 
-                int returned = item.getQuantityReturned() != null ? item.getQuantityReturned() : 0;
-                int lost = item.getQuantityLost() != null ? item.getQuantityLost() : 0;
+                int returned = getQuantityReturned(item);
+                int lost = getQuantityLost(item);
                 int toReturn = item.getQuantity() - lost - returned;
 
                 if (toReturn > 0) addStock(item.getGoods(), toReturn);
@@ -335,6 +335,19 @@ public class TransactionServiceImpl implements TransactionService {
         goodsRepository.save(goods);
     }
 
+    // ==================== NULL-SAFE GETTERS ====================
+    private int getQuantityReturned(TransactionsItems item) {
+        return item.getQuantityReturned() != null ? item.getQuantityReturned() : 0;
+    }
+
+    private int getQuantityDamaged(TransactionsItems item) {
+        return item.getQuantityDamaged() != null ? item.getQuantityDamaged() : 0;
+    }
+
+    private int getQuantityLost(TransactionsItems item) {
+        return item.getQuantityLost() != null ? item.getQuantityLost() : 0;
+    }
+
     // ==================== CATEGORY HELPER ====================
     private void setCategoryDetails(Transactions transaction, TransactionRequest request) {
         if ("NORMAL".equalsIgnoreCase(request.getTransactionCategory())) {
@@ -374,7 +387,6 @@ public class TransactionServiceImpl implements TransactionService {
             item.setReturnableType(TransactionsItems.ReturnableType.RETURNABLE);
         }
 
-        // ✅ NON-RETURNABLE: Immediately marked as CONSUMED
         if (item.getReturnableType() == TransactionsItems.ReturnableType.NON_RETURNABLE) {
             item.setQuantityReturned(itemReq.getQuantity());
             item.setStatus(TransactionsItems.ItemStatus.CONSUMED);
@@ -406,10 +418,7 @@ public class TransactionServiceImpl implements TransactionService {
                 int diff = newQuantity - oldQuantity;
 
                 if (diff > 0) {
-                    // Increasing - take more from stock
                     reduceStock(goods, diff, goods.getName());
-
-                    // PRESERVE previous return/damage/lost - only cap if they exceed new total
                     if (existingItem.getQuantityReturned() != null && existingItem.getQuantityReturned() > newQuantity) {
                         existingItem.setQuantityReturned(newQuantity);
                     }
@@ -419,18 +428,14 @@ public class TransactionServiceImpl implements TransactionService {
                     if (existingItem.getQuantityLost() != null && existingItem.getQuantityLost() > newQuantity) {
                         existingItem.setQuantityLost(newQuantity);
                     }
-
                 } else if (diff < 0) {
-                    // Decreasing - return to stock
                     addStock(goods, Math.abs(diff));
                 }
 
                 existingItem.setQuantity(newQuantity);
-                existingItem.setStatus(determineItemStatus(existingItem, null));
+                existingItem.setStatus(determineItemStatus(existingItem));
                 transactionItemRepository.save(existingItem);
-
             } else {
-                // ADD new item
                 reduceStock(goods, itemReq.getQuantity(), goods.getName());
                 TransactionsItems newItem = createTransactionItem(transaction, goods, itemReq);
                 transactionItemRepository.save(newItem);
@@ -440,16 +445,10 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     // ==================== STATUS HELPERS ====================
-    private TransactionsItems.ItemStatus determineItemStatus(TransactionsItems item, String requestedStatus) {
-        if (requestedStatus != null) {
-            try {
-                return TransactionsItems.ItemStatus.valueOf(requestedStatus);
-            } catch (IllegalArgumentException e) {}
-        }
-
-        int totalReturned = item.getQuantityReturned() != null ? item.getQuantityReturned() : 0;
-        int totalLost = item.getQuantityLost() != null ? item.getQuantityLost() : 0;
-        int totalDamaged = item.getQuantityDamaged() != null ? item.getQuantityDamaged() : 0;
+    private TransactionsItems.ItemStatus determineItemStatus(TransactionsItems item) {
+        int totalReturned = getQuantityReturned(item);
+        int totalLost = getQuantityLost(item);
+        int totalDamaged = getQuantityDamaged(item);
         int totalResolved = totalReturned + totalLost;
 
         if (item.getReturnableType() == TransactionsItems.ReturnableType.NON_RETURNABLE) {

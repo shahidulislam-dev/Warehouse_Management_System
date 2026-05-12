@@ -1,13 +1,12 @@
 package com.warehouse_management.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
 import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.DynamicUpdate;
 
 import java.io.Serial;
 import java.io.Serializable;
-
+@SuppressWarnings("unused")
 @NamedQuery(name = "User.findByEmailId", query = "select u from User u where u.email=:email")
 @NamedQuery(name = "User.getStaffUsers", query = "select new com.warehouse_management.wrapper.UserWrapper(u.id, u.fullName, u.email, u.contactNumber, u.status, u.role) from User u where u.role = 'staff'")
 @NamedQuery(name = "User.getAllAdmin", query = "select u.email from User u where u.role = 'admin'")

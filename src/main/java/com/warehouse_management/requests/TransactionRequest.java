@@ -1,7 +1,7 @@
 package com.warehouse_management.requests;
 
 import java.util.List;
-
+@SuppressWarnings("unused")
 public class TransactionRequest {
     private String transactionCategory;
     private String approvedBy;
