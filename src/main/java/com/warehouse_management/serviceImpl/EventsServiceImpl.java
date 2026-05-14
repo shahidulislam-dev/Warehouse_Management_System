@@ -31,6 +31,7 @@ public class EventsServiceImpl implements EventsService {
             event.setEventName(request.getEventName());
             event.setEventDate(request.getEventDate());
             event.setActive(request.isActive());
+            // ✅ createdAt is auto-set by @CreationTimestamp
 
             eventRepository.save(event);
             return ResponseEntity.ok("Event created successfully");
@@ -58,6 +59,7 @@ public class EventsServiceImpl implements EventsService {
                 event.setEventDate(request.getEventDate());
             }
             event.setActive(request.isActive());
+            // ✅ createdAt remains unchanged on update
 
             eventRepository.save(event);
             return ResponseEntity.ok("Event updated successfully");
@@ -152,6 +154,7 @@ public class EventsServiceImpl implements EventsService {
         response.setEventName(event.getEventName());
         response.setEventDate(event.getEventDate());
         response.setActive(event.isActive());
+        response.setCreatedAt(event.getCreatedAt());  // ✅ Include createdAt in response
         return response;
     }
 }

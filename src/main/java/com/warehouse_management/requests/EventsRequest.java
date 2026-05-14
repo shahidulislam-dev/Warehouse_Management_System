@@ -1,11 +1,12 @@
 package com.warehouse_management.requests;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
+
 @SuppressWarnings("unused")
 public class EventsRequest {
 
     private String eventName;
-    private LocalDateTime eventDate;
+    private LocalDate eventDate;
     private boolean active;
 
     public EventsRequest() {
@@ -19,11 +20,11 @@ public class EventsRequest {
         this.eventName = eventName;
     }
 
-    public LocalDateTime getEventDate() {
+    public LocalDate getEventDate() {
         return eventDate;
     }
 
-    public void setEventDate(LocalDateTime eventDate) {
+    public void setEventDate(LocalDate eventDate) {
         this.eventDate = eventDate;
     }
 

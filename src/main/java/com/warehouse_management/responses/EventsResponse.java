@@ -1,12 +1,14 @@
 package com.warehouse_management.responses;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+
 @SuppressWarnings("unused")
 public class EventsResponse {
 
     private Long id;
     private String eventName;
-    private LocalDateTime eventDate;
+    private LocalDate eventDate;
     private boolean active;
     private LocalDateTime createdAt;
 
@@ -29,11 +31,11 @@ public class EventsResponse {
         this.eventName = eventName;
     }
 
-    public LocalDateTime getEventDate() {
+    public LocalDate getEventDate() {
         return eventDate;
     }
 
-    public void setEventDate(LocalDateTime eventDate) {
+    public void setEventDate(LocalDate eventDate) {
         this.eventDate = eventDate;
     }
 

@@ -1,10 +1,13 @@
 package com.warehouse_management.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.CreationTimestamp;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+
 @SuppressWarnings("unused")
 @Entity
 public class Events {
@@ -15,10 +18,15 @@ public class Events {
     @Column(nullable = false)
     private String eventName;
 
-    private LocalDateTime eventDate;
+    @Column(nullable = false)
+    private LocalDate eventDate;
 
     @Column(nullable = false)
     private boolean active = true;
+
+    @CreationTimestamp
+    @Column(updatable = false)
+    private LocalDateTime createdAt;
 
     @OneToMany(mappedBy = "event")
     private List<Transactions> transactions = new ArrayList<>();
@@ -26,11 +34,12 @@ public class Events {
     public Events() {
     }
 
-    public Events(Long id, String eventName, LocalDateTime eventDate, boolean active) {
+    public Events(Long id, String eventName, LocalDate eventDate, boolean active, LocalDateTime createdAt) {
         this.id = id;
         this.eventName = eventName;
         this.eventDate = eventDate;
         this.active = active;
+        this.createdAt = createdAt;
     }
 
     public Long getId() {
@@ -49,11 +58,11 @@ public class Events {
         this.eventName = eventName;
     }
 
-    public LocalDateTime getEventDate() {
+    public LocalDate getEventDate() {
         return eventDate;
     }
 
-    public void setEventDate(LocalDateTime eventDate) {
+    public void setEventDate(LocalDate eventDate) {
         this.eventDate = eventDate;
     }
 
@@ -71,5 +80,13 @@ public class Events {
 
     public void setTransactions(List<Transactions> transactions) {
         this.transactions = transactions;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 }
